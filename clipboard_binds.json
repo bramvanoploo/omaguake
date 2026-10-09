@@ -1,0 +1,14 @@
+{
+  "copy": [
+    {
+      "modmask": 64,
+      "key": "C"
+    }
+  ],
+  "paste": [
+    {
+      "modmask": 64,
+      "key": "V"
+    }
+  ]
+}

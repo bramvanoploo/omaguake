@@ -57,6 +57,69 @@ Item {
     }
   }
 
+  property var clipboardBinds: null
+
+  function matchKeyBind(event, bindList) {
+    if (!bindList || !bindList.length) return false
+    for (var i = 0; i < bindList.length; i++) {
+      var item = bindList[i]
+      var modmask = item.modmask || 0
+      var keyStr = String(item.key || "").trim().toUpperCase()
+
+      // Convert modmask bits: 64 -> Meta, 4 -> Control, 1 -> Shift, 8 -> Alt
+      var expectedMods = 0
+      if (modmask & 64) expectedMods |= Qt.MetaModifier
+      if (modmask & 4)  expectedMods |= Qt.ControlModifier
+      if (modmask & 1)  expectedMods |= Qt.ShiftModifier
+      if (modmask & 8)  expectedMods |= Qt.AltModifier
+
+      var activeMods = event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.ShiftModifier | Qt.AltModifier)
+      if (activeMods !== expectedMods) continue
+
+      var matchesKey = false
+      if (keyStr.length === 1 && keyStr >= "A" && keyStr <= "Z") {
+        matchesKey = (event.key === (Qt.Key_A + (keyStr.charCodeAt(0) - 65)))
+      } else if (keyStr.length === 1 && keyStr >= "0" && keyStr <= "9") {
+        matchesKey = (event.key === (Qt.Key_0 + (keyStr.charCodeAt(0) - 48)))
+      } else if (keyStr === "INSERT") {
+        matchesKey = (event.key === Qt.Key_Insert)
+      } else if (keyStr === "DELETE") {
+        matchesKey = (event.key === Qt.Key_Delete)
+      } else if (keyStr === "RETURN" || keyStr === "ENTER") {
+        matchesKey = (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+      } else if (keyStr === "SPACE") {
+        matchesKey = (event.key === Qt.Key_Space)
+      } else if (keyStr === "BACKSPACE") {
+        matchesKey = (event.key === Qt.Key_Backspace)
+      }
+
+      if (matchesKey) return true
+    }
+    return false
+  }
+
+  function checkIsCopy(event) {
+    if (clipboardBinds && clipboardBinds.copy && matchKeyBind(event, clipboardBinds.copy)) {
+      return true
+    }
+    // Standard terminal fallbacks: Super+C, Ctrl+Shift+C, Ctrl+Insert
+    if ((event.modifiers & Qt.MetaModifier) && event.key === Qt.Key_C) return true
+    if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_C) return true
+    if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Insert) return true
+    return false
+  }
+
+  function checkIsPaste(event) {
+    if (clipboardBinds && clipboardBinds.paste && matchKeyBind(event, clipboardBinds.paste)) {
+      return true
+    }
+    // Standard terminal fallbacks: Super+V, Ctrl+Shift+V, Shift+Insert
+    if ((event.modifiers & Qt.MetaModifier) && event.key === Qt.Key_V) return true
+    if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_V) return true
+    if ((event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_Insert) return true
+    return false
+  }
+
   QMLTermWidget {
     id: terminal
     anchors.fill: parent
@@ -89,13 +152,8 @@ Item {
     }
 
     Keys.onPressed: function(event) {
-      var isCopy = ((event.modifiers & Qt.MetaModifier) && event.key === Qt.Key_C) ||
-                   ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_C) ||
-                   ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Insert)
-
-      var isPaste = ((event.modifiers & Qt.MetaModifier) && event.key === Qt.Key_V) ||
-                    ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_V) ||
-                    ((event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_Insert)
+      var isCopy = root.checkIsCopy(event)
+      var isPaste = root.checkIsPaste(event)
 
       if (isCopy) {
         terminal.copyClipboard()

@@ -1,3 +1,5 @@
 settings.json
 current_scheme.txt
 QMLTermWidget/color-schemes/Omaguake_*.colorscheme
+__pycache__/
+*.pyc

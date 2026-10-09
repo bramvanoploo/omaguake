@@ -29,6 +29,10 @@ Item {
 
   property string terminalIcon: "\uf489"
   property string currentSchemeName: "Omaguake"
+  property var currentClipboardBinds: ({
+    copy: [{ modmask: 64, key: "C" }],
+    paste: [{ modmask: 64, key: "V" }]
+  })
 
   FileView {
     id: currentSchemeFile
@@ -39,6 +43,26 @@ Item {
       var name = String(text() || "").trim()
       if (name.length > 0) {
         root.currentSchemeName = name
+      }
+    }
+    onFileChanged: reload()
+  }
+
+  FileView {
+    id: clipboardBindsFile
+    path: root.pluginDir + "/clipboard_binds.json"
+    watchChanges: true
+    printErrors: false
+    onLoaded: {
+      var raw = String(text() || "").trim()
+      if (raw.length > 0) {
+        try {
+          var parsed = JSON.parse(raw)
+          if (parsed && (parsed.copy || parsed.paste)) {
+            root.currentClipboardBinds = parsed
+            root.notifyTabsClipboardBinds()
+          }
+        } catch(e) {}
       }
     }
     onFileChanged: reload()
@@ -93,6 +117,7 @@ Item {
     var term = terminalComponent.createObject(terminalArea, {
       tabId: String(newId),
       schemeName: root.currentSchemeName,
+      clipboardBinds: root.currentClipboardBinds,
       visible: false,
       activeTab: false
     })
@@ -284,6 +309,7 @@ Item {
     function closeTab(index: int): void { root.closeTab(index) }
     function selectTab(index: int): void { root.selectTab(index) }
     function retheme(): void { root.reloadTheme() }
+    function syncBinds(): void { root.reloadClipboardBinds() }
   }
 
   IpcHandler {
@@ -297,6 +323,7 @@ Item {
     function closeTab(index: int): void { root.closeTab(index) }
     function selectTab(index: int): void { root.selectTab(index) }
     function retheme(): void { root.reloadTheme() }
+    function syncBinds(): void { root.reloadClipboardBinds() }
   }
 
   Process {
@@ -313,6 +340,42 @@ Item {
     }
     onExited: function(exitCode, exitStatus) {
       root.notifyTabsRetheme()
+    }
+  }
+
+  Process {
+    id: clipboardSyncProc
+    command: [root.pluginDir + "/scripts/sync-clipboard-binds.py"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        if (raw.length > 0) {
+          try {
+            var parsed = JSON.parse(raw)
+            if (parsed && (parsed.copy || parsed.paste)) {
+              root.currentClipboardBinds = parsed
+              root.notifyTabsClipboardBinds()
+            }
+          } catch(e) {}
+        }
+      }
+    }
+  }
+
+  function reloadClipboardBinds() {
+    if (!clipboardSyncProc.running) {
+      clipboardSyncProc.command = [root.pluginDir + "/scripts/sync-clipboard-binds.py"]
+      clipboardSyncProc.running = true
+    }
+  }
+
+  function notifyTabsClipboardBinds() {
+    for (var i = 0; i < root.tabs.length; i++) {
+      var item = root.tabs[i].termItem
+      if (item) {
+        item.clipboardBinds = root.currentClipboardBinds
+      }
     }
   }
 
@@ -339,6 +402,7 @@ Item {
   Component.onCompleted: {
     root.createTab()
     root.reloadTheme()
+    root.reloadClipboardBinds()
   }
 
   Connections {
@@ -416,6 +480,12 @@ Item {
       : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
 
+    ShortcutInhibitor {
+      id: shortcutInhibitor
+      window: panelWindow
+      enabled: root.opened
+    }
+
     // Automatically hide on focus loss
     HyprlandFocusGrab {
       active: root.opened && root.focusPrimed && config.autoHideOnFocusLoss
@@ -469,6 +539,7 @@ Item {
           TerminalView {
             anchors.fill: parent
             schemeName: root.currentSchemeName
+            clipboardBinds: root.currentClipboardBinds
           }
         }
       }
