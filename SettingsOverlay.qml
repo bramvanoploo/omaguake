@@ -240,7 +240,7 @@ PopupCard {
       spacing: Style.spacing.md
 
       Text {
-        text: ""
+        text: "\uf489"
         font.family: Style.font.family
         font.pixelSize: Style.font.heading
         color: Color.accent
