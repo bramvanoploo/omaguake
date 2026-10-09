@@ -20,6 +20,12 @@ Item {
   signal commandUpdated(string commandText)
   signal processExited(int exitCode)
 
+  signal newTabRequested()
+  signal closeTabRequested()
+  signal nextTabRequested()
+  signal previousTabRequested()
+  signal switchTabNumberRequested(int tabNumber)
+
   property string schemeName: "Omaguake"
 
   onSchemeNameChanged: {
@@ -169,6 +175,34 @@ Item {
         } catch(e) {}
         event.accepted = true
         return
+      }
+
+      // Tab Management Shortcuts
+      if (event.modifiers & Qt.ControlModifier) {
+        if (!(event.modifiers & (Qt.AltModifier | Qt.MetaModifier))) {
+          if (event.key === Qt.Key_T && !(event.modifiers & Qt.ShiftModifier)) {
+            root.newTabRequested()
+            event.accepted = true
+            return
+          } else if (event.key === Qt.Key_W && !(event.modifiers & Qt.ShiftModifier)) {
+            root.closeTabRequested()
+            event.accepted = true
+            return
+          } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+            if (event.modifiers & Qt.ShiftModifier || event.key === Qt.Key_Backtab) {
+              root.previousTabRequested()
+            } else {
+              root.nextTabRequested()
+            }
+            event.accepted = true
+            return
+          } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && !(event.modifiers & Qt.ShiftModifier)) {
+            var tabNum = (event.key - Qt.Key_1) + 1
+            root.switchTabNumberRequested(tabNum)
+            event.accepted = true
+            return
+          }
+        }
       }
 
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {

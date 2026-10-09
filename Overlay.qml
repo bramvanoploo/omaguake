@@ -136,11 +136,26 @@ Item {
     term.processExited.connect(function(code) {
       root.closeTabById(newId)
     })
+    term.newTabRequested.connect(function() {
+      root.createTab()
+    })
+    term.closeTabRequested.connect(function() {
+      root.closeTabById(newId)
+    })
+    term.nextTabRequested.connect(function() {
+      root.nextTab()
+    })
+    term.previousTabRequested.connect(function() {
+      root.previousTab()
+    })
+    term.switchTabNumberRequested.connect(function(tabNum) {
+      root.selectTabByNumber(tabNum)
+    })
 
     var newTabs = tabs.slice()
     newTabs.push({
       id: newId,
-      title: newId + ": ~",
+      title: (tabs.length + 1) + ": ~",
       shellName: "bash",
       cwd: "~",
       lastCommand: "",
@@ -148,11 +163,38 @@ Item {
     })
     tabs = newTabs
     currentTabIndex = tabs.length - 1
+    root.refreshTabTitles()
     root.updateTerminalVisibility()
     Qt.callLater(function() {
       root.refreshActiveTerminal()
       tabsFlick.contentX = Math.max(0, tabsRow.width - tabsFlick.width)
     })
+  }
+
+  function refreshTabTitles() {
+    var changed = false
+    var updated = tabs.slice()
+    for (var i = 0; i < updated.length; i++) {
+      var tab = updated[i]
+      var tabPos = i + 1
+      var cwd = tab.cwd || "~"
+      var lastCmd = tab.lastCommand || ""
+      var displayTitle = tabPos + ": " + cwd + (lastCmd ? " " + lastCmd : "")
+      if (tab.title !== displayTitle) {
+        updated[i] = {
+          id: tab.id,
+          title: displayTitle,
+          shellName: tab.shellName || cwd,
+          cwd: cwd,
+          lastCommand: lastCmd,
+          termItem: tab.termItem
+        }
+        changed = true
+      }
+    }
+    if (changed) {
+      tabs = updated
+    }
   }
 
   function closeTab(index) {
@@ -175,6 +217,7 @@ Item {
     if (currentTabIndex >= tabs.length) {
       currentTabIndex = tabs.length - 1
     }
+    root.refreshTabTitles()
     root.updateTerminalVisibility()
     Qt.callLater(function() { root.refreshActiveTerminal() })
   }
@@ -203,7 +246,8 @@ Item {
         }
         var cwd = shortTitle || "~"
         var lastCmd = tab.lastCommand || ""
-        var displayTitle = tab.id + ": " + cwd + (lastCmd ? " " + lastCmd : "")
+        var tabPos = i + 1
+        var displayTitle = tabPos + ": " + cwd + (lastCmd ? " " + lastCmd : "")
         if (tab.title === displayTitle && tab.cwd === cwd) {
           return
         }
@@ -232,7 +276,8 @@ Item {
           if (tab.lastCommand === trimmed) {
             return
           }
-          var displayTitle = tab.id + ": " + cwd + " " + trimmed
+          var tabPos = i + 1
+          var displayTitle = tabPos + ": " + cwd + " " + trimmed
           var newTabs = tabs.slice()
           newTabs[i] = {
             id: tab.id,
@@ -294,6 +339,26 @@ Item {
   function selectTab(index) {
     if (index >= 0 && index < root.tabs.length) {
       root.currentTabIndex = index
+      tabsFlick.ensureTabVisible(index)
+    }
+  }
+
+  function nextTab() {
+    if (root.tabs.length > 1) {
+      root.selectTab((root.currentTabIndex + 1) % root.tabs.length)
+    }
+  }
+
+  function previousTab() {
+    if (root.tabs.length > 1) {
+      root.selectTab((root.currentTabIndex - 1 + root.tabs.length) % root.tabs.length)
+    }
+  }
+
+  function selectTabByNumber(tabNumber) {
+    var idx = tabNumber - 1
+    if (idx >= 0 && idx < root.tabs.length) {
+      root.selectTab(idx)
     }
   }
 
@@ -574,6 +639,17 @@ Item {
           contentHeight: height
           flickableDirection: Flickable.HorizontalFlick
           boundsBehavior: Flickable.StopAtBounds
+
+          function ensureTabVisible(tabIndex) {
+            if (tabIndex < 0) return
+            var itemWidth = Style.space(160) + 4
+            var targetX = 6 + (tabIndex * itemWidth)
+            if (targetX < tabsFlick.contentX) {
+              tabsFlick.contentX = Math.max(0, targetX)
+            } else if (targetX + itemWidth > tabsFlick.contentX + tabsFlick.width) {
+              tabsFlick.contentX = Math.min(Math.max(0, tabsRow.width - tabsFlick.width), targetX + itemWidth - tabsFlick.width)
+            }
+          }
 
           MouseArea {
             anchors.fill: parent
