@@ -54,7 +54,7 @@ BarWidget {
     bar: root.bar
     text: "\uf120"
     slotSize: Style.bar.iconSlot
-    tooltipText: "Omaguake Dropdown Terminal (" + config.keybinding + ")\nLeft-click: Toggle · Right-click: Settings"
+    tooltipText: "Omaguake Dropdown Terminal" + (config.keybinding ? " (" + config.keybinding + ")" : "") + "\nLeft-click: Toggle · Right-click: Settings"
 
     onPressed: function(btn) {
       if (btn === Qt.RightButton) {

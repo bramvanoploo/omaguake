@@ -123,10 +123,39 @@ def check_key_conflict(candidate_chord):
         "message": f"Keybinding '{norm}' is available."
     }
 
-def check_gesture_conflict():
-    # Check 3-finger swipe gestures
-    # In Hyprland, check if 3-finger drag is enabled
-    # Check t2-trackpad.lua and input.lua
+def find_free_suggestions(exclude_chord=None):
+    candidates = [
+        "F12",
+        "CTRL + SPACE",
+        "CTRL + GRAVE",
+        "SUPER + GRAVE",
+        "ALT + SPACE",
+        "CTRL + ALT + T",
+        "SUPER + F12",
+        "ALT + F12",
+        "CTRL + BACKQUOTE"
+    ]
+    norm_exclude = normalize_key_chord(exclude_chord)[0] if exclude_chord else ""
+    free_suggestions = []
+    
+    binds = get_hyprctl_binds()
+    bind_keys = set()
+    for b in binds:
+        bk = str(b.get("key", "")).upper()
+        bm = int(b.get("modmask", 0))
+        bind_keys.add((bm, bk))
+        
+    for cand in candidates:
+        norm, mods, key = normalize_key_chord(cand)
+        if not norm or norm == norm_exclude:
+            continue
+        if (mods, key) not in bind_keys:
+            free_suggestions.append(norm)
+            if len(free_suggestions) >= 3:
+                break
+    return free_suggestions
+
+def check_gesture_conflict(fingers=3):
     files_to_check = [
         HYPR_DIR / "t2-trackpad.lua",
         HYPR_DIR / "input.lua",
@@ -141,44 +170,103 @@ def check_gesture_conflict():
             # Exclude our own block
             content = re.sub(r"-- BEGIN bramvanoploo\.omaguake.*?-- END bramvanoploo\.omaguake", "", content, flags=re.DOTALL)
             
-            # Check active lines only
             for line in content.splitlines():
                 line = line.strip()
                 if line.startswith("--"):
                     continue
-                # Check 3-finger drag
-                if re.search(r'drag_3fg\s*=\s*([123]|true)', line):
+                if fingers == 3 and re.search(r'drag_3fg\s*=\s*([123]|true)', line):
                     return {
                         "conflict": True,
                         "message": f"Three-finger drag is enabled in {f.name}, which prevents 3-finger swipe gestures."
                     }
                 if "hl.gesture" in line or "gesture" in line:
-                    if re.search(r'fingers\s*=\s*3', line) and re.search(r'direction\s*=\s*["\'](down|up|vertical)["\']', line):
+                    if re.search(rf'fingers\s*=\s*{fingers}', line) and re.search(r'direction\s*=\s*["\'](down|up|vertical)["\']', line):
                         return {
                             "conflict": True,
-                            "message": f"Three-finger vertical gesture already configured in {f.name}."
+                            "message": f"{fingers}-finger vertical gesture is already configured in {f.name}."
                         }
         except Exception:
             pass
             
     return {
         "conflict": False,
-        "message": "3-finger swipe down (show) and swipe up (hide) gestures are available."
+        "message": f"{fingers}-finger swipe down (show) and swipe up (hide) gestures are available."
     }
 
-def apply_configuration(keychord, enable_gestures):
-    # First check conflicts
-    key_res = check_key_conflict(keychord)
-    if key_res["conflict"]:
-        return {"success": False, "error": key_res["message"]}
+def get_current_omaguake_status():
+    applied_key = ""
+    applied_gestures = False
+    applied_fingers = 3
+    
+    if BINDINGS_LUA.exists():
+        try:
+            content = BINDINGS_LUA.read_text(encoding="utf-8")
+            m_block = re.search(r"-- BEGIN bramvanoploo\.omaguake(.*?)-- END bramvanoploo\.omaguake", content, flags=re.DOTALL)
+            if m_block:
+                block_txt = m_block.group(1)
+                m_bind = re.search(r'hl\.bind\(\s*["\']([^"\']+)["\']', block_txt)
+                if m_bind:
+                    applied_key = normalize_key_chord(m_bind.group(1))[0]
+                m_gest = re.search(r'hl\.gesture\(\s*\{\s*fingers\s*=\s*(\d+)', block_txt)
+                if m_gest:
+                    applied_gestures = True
+                    applied_fingers = int(m_gest.group(1))
+        except Exception:
+            pass
+            
+    # Check suggested key (CTRL + SPACE)
+    # To check if it's used by someone OTHER than Omaguake:
+    suggested_chord = "CTRL + SPACE"
+    suggested_norm, s_mods, s_key = normalize_key_chord(suggested_chord)
+    s_conflict = False
+    s_conflict_msg = ""
+    binds = get_hyprctl_binds()
+    for b in binds:
+        desc = b.get("description", "") or ""
+        arg = b.get("arg", "") or ""
+        disp = b.get("dispatcher", "") or ""
+        if "bramvanoploo.omaguake" in arg or "bramvanoploo.omaguake" in desc:
+            continue
+        if applied_key == suggested_norm:
+            # It's currently ours
+            continue
+        b_key = str(b.get("key", "")).upper()
+        b_modmask = int(b.get("modmask", 0))
+        if b_key == s_key and b_modmask == s_mods:
+            conflict_label = desc or arg or disp or "system action"
+            s_conflict = True
+            s_conflict_msg = f"'{suggested_norm}' is in use by '{conflict_label}'."
+            break
+            
+    gest_res = check_gesture_conflict(3)
+    
+    return {
+        "applied_key": applied_key,
+        "applied_gestures": applied_gestures,
+        "applied_gesture_fingers": applied_fingers,
+        "suggested_key": suggested_chord,
+        "suggested_key_conflict": s_conflict,
+        "suggested_key_conflict_message": s_conflict_msg,
+        "suggested_gesture_conflict": gest_res["conflict"],
+        "suggested_gesture_conflict_message": gest_res["message"] if gest_res["conflict"] else "",
+        "key_suggestions": find_free_suggestions(suggested_chord if s_conflict else "")
+    }
+
+def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_conflicts=False):
+    norm_chord = ""
+    if keychord and keychord.strip() and keychord.strip().lower() not in ["none", ""]:
+        norm_chord, _, _ = normalize_key_chord(keychord)
+        # If not unbinding, verify conflicts
+        if not unbind_conflicts:
+            key_res = check_key_conflict(norm_chord)
+            if key_res["conflict"]:
+                return {"success": False, "error": key_res["message"]}
         
     if enable_gestures:
-        gest_res = check_gesture_conflict()
+        gest_res = check_gesture_conflict(gesture_fingers)
         if gest_res["conflict"]:
             return {"success": False, "error": gest_res["message"]}
             
-    norm_chord, _, _ = normalize_key_chord(keychord)
-    
     # Update bindings.lua
     BINDINGS_LUA.parent.mkdir(parents=True, exist_ok=True)
     existing = ""
@@ -192,12 +280,17 @@ def apply_configuration(keychord, enable_gestures):
         "",
         "-- BEGIN bramvanoploo.omaguake",
         'hl.layer_rule({ match = { namespace = "omaguake" }, blur = true, no_anim = true, animation = "none" })',
-        f'hl.bind("{norm_chord}", hl.dsp.global("bramvanoploo.omaguake:toggle"))',
     ]
+    if norm_chord:
+        if unbind_conflicts:
+            block_lines.append(f'hl.unbind("{norm_chord}")')
+        block_lines.append(f'hl.bind("{norm_chord}", hl.dsp.global("bramvanoploo.omaguake:toggle"))')
+        
     if enable_gestures:
-        block_lines.append('-- Omaguake Gestures: 3-finger swipe down to show, swipe up to hide')
-        block_lines.append('hl.gesture({ fingers = 3, direction = "down", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:show")) end })')
-        block_lines.append('hl.gesture({ fingers = 3, direction = "up", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:hide")) end })')
+        block_lines.append(f'-- Omaguake Gestures: {gesture_fingers}-finger swipe down to show, swipe up to hide')
+        block_lines.append(f'hl.gesture({{ fingers = {gesture_fingers}, direction = "down", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:show")) end }})')
+        block_lines.append(f'hl.gesture({{ fingers = {gesture_fingers}, direction = "up", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:hide")) end }})')
+        
     block_lines.append("-- END bramvanoploo.omaguake")
     block_lines.append("")
     
@@ -210,7 +303,7 @@ def apply_configuration(keychord, enable_gestures):
     except Exception:
         pass
         
-    return {"success": True, "message": "Keybinding and gestures applied successfully."}
+    return {"success": True, "message": "Omaguake bindings updated successfully."}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -218,17 +311,31 @@ if __name__ == "__main__":
         sys.exit(1)
         
     action = sys.argv[1]
-    if action == "check-key":
-        chord = sys.argv[2] if len(sys.argv) > 2 else "CTRL + SPACE"
-        print(json.dumps(check_key_conflict(chord)))
+    if action == "status":
+        print(json.dumps(get_current_omaguake_status()))
+    elif action == "check-key":
+        chord = sys.argv[2] if len(sys.argv) > 2 else ""
+        res = check_key_conflict(chord)
+        if res.get("conflict"):
+            res["suggestions"] = find_free_suggestions(chord)
+        print(json.dumps(res))
     elif action == "check-gesture":
-        print(json.dumps(check_gesture_conflict()))
+        f_count = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 3
+        print(json.dumps(check_gesture_conflict(f_count)))
     elif action == "apply":
-        chord = sys.argv[2] if len(sys.argv) > 2 else "CTRL + SPACE"
-        enable_gest = True
+        chord = sys.argv[2] if len(sys.argv) > 2 else ""
+        if chord.lower() in ["none", '""', "''"]:
+            chord = ""
+        enable_gest = False
         if len(sys.argv) > 3:
             enable_gest = sys.argv[3].lower() in ["1", "true", "yes"]
-        res = apply_configuration(chord, enable_gest)
+        f_count = 3
+        if len(sys.argv) > 4 and sys.argv[4].isdigit():
+            f_count = int(sys.argv[4])
+        unbind_conf = False
+        if len(sys.argv) > 5:
+            unbind_conf = sys.argv[5].lower() in ["1", "true", "yes"]
+        res = apply_configuration(chord, enable_gest, f_count, unbind_conf)
         print(json.dumps(res))
         if not res.get("success"):
             sys.exit(1)

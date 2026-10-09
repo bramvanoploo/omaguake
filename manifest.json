@@ -23,9 +23,11 @@
     "defaultSection": "right",
     "defaults": {
       "heightPercent": 45,
+      "overlayOpacityPercent": 90,
       "tabsPosition": "bottom",
-      "keybinding": "CTRL + SPACE",
-      "gesturesEnabled": true,
+      "keybinding": "",
+      "gesturesEnabled": false,
+      "gestureFingers": 3,
       "autoHideOnFocusLoss": true
     },
     "schema": [
@@ -34,6 +36,12 @@
         "type": "number",
         "label": "Height percentage",
         "description": "Height of the drop-down terminal overlay (20-100%)."
+      },
+      {
+        "key": "overlayOpacityPercent",
+        "type": "number",
+        "label": "Overlay opacity percentage",
+        "description": "Opacity percentage of the plugin overlay background (20-100%)."
       },
       {
         "key": "tabsPosition",
@@ -51,7 +59,7 @@
         "key": "gesturesEnabled",
         "type": "boolean",
         "label": "Trackpad gestures",
-        "description": "Enable 3-finger swipe down to show and swipe up to hide."
+        "description": "Enable multi-finger swipe gestures."
       },
       {
         "key": "autoHideOnFocusLoss",

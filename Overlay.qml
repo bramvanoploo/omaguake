@@ -228,7 +228,10 @@ Item {
       opacity: Math.max(0.1, root.slideProgress)
 
       readonly property real cardOpacity: {
-        var op = config.systemActiveOpacity
+        if (config && config.overlayOpacityPercent !== undefined) {
+          return Math.max(0.20, Math.min(1.0, config.overlayOpacityPercent / 100.0))
+        }
+        var op = config ? config.systemActiveOpacity : 0.88
         if (op > 0 && op < 1.0) {
           return op >= 0.98 ? 0.90 : op
         }
@@ -470,7 +473,6 @@ Item {
     source: Qt.resolvedUrl("SettingsOverlay.qml")
     onLoaded: {
       if (item) {
-        item.bar = null
         item.anchorItem = container
         item.configManager = config
         item.open = true
