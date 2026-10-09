@@ -322,18 +322,9 @@ Item {
         id: bgCard
         anchors.fill: parent
         color: Color.background
-        border.color: Color.menu.border
+        border.color: Color.muted
         border.width: 1
         radius: Style.cornerRadius
-
-        // Subtle gradient top bar shadow
-        Rectangle {
-          anchors.bottom: parent.bottom
-          width: parent.width
-          height: 3
-          color: Color.accent
-          opacity: 0.8
-        }
       }
 
       // Terminal Content Area
@@ -370,8 +361,15 @@ Item {
         height: 38
         y: config.tabsPosition === "top" ? 0 : parent.height - height
         color: Qt.rgba(Color.background.r * 0.75, Color.background.g * 0.75, Color.background.b * 0.75, Math.min(0.96, container.cardOpacity + 0.05))
-        border.color: Color.menu.border
-        border.width: 1
+        border.width: 0
+
+        // Divider between tab bar and terminal
+        Rectangle {
+          width: parent.width
+          height: 1
+          y: config.tabsPosition === "top" ? parent.height - 1 : 0
+          color: Color.muted
+        }
 
         // Scrollable Tabs Area (Left-aligned)
         Flickable {
@@ -411,7 +409,7 @@ Item {
                 height: 30
                 radius: Style.cornerRadius > 0 ? 4 : 0
                 color: isActive ? Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.85) : "transparent"
-                border.color: isActive ? Color.accent : (tabHover.containsMouse ? Color.menu.border : "transparent")
+                border.color: isActive ? Color.accent : (tabHover.containsMouse ? Color.muted : "transparent")
                 border.width: 1
 
                 MouseArea {
@@ -486,31 +484,12 @@ Item {
           }
 
           // Pinned "+" button to open more tabs
-          Rectangle {
+          Button {
             id: newTabBtn
-            width: 30
-            height: 30
-            radius: Style.cornerRadius > 0 ? 4 : 0
-            color: newTabHover.containsMouse ? Color.menu.selectedBackground : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
-            border.color: Color.accent
-            border.width: 1
-
-            Text {
-              anchors.centerIn: parent
-              text: "+"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.heading
-              font.bold: true
-              color: Color.accent
-            }
-
-            MouseArea {
-              id: newTabHover
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.createTab()
-            }
+            text: "+"
+            tooltipText: "Open new terminal tab"
+            fontSize: Style.font.body
+            onClicked: root.createTab()
           }
         }
       }
