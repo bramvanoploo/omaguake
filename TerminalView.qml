@@ -13,7 +13,11 @@ Item {
   property string currentTitle: "bash"
   property bool activeTab: false
 
+  property string activeLine: ""
+  property string typedLine: ""
+
   signal titleUpdated(string newTitle)
+  signal lineUpdated(string activeLineText)
   signal processExited(int exitCode)
 
   property string schemeName: "Omaguake"
@@ -21,6 +25,40 @@ Item {
   onSchemeNameChanged: {
     if (terminal && schemeName.length > 0) {
       terminal.colorScheme = schemeName
+    }
+  }
+
+  function updateTyped(newTyped) {
+    typedLine = newTyped
+    activeLine = newTyped
+    lineUpdated(newTyped)
+  }
+
+  Timer {
+    id: procCheckTimer
+    interval: 500
+    repeat: true
+    running: root.activeTab
+    onTriggered: {
+      try {
+        var fg = ""
+        if (termSession && typeof termSession.foregroundProcessName === "function") {
+          fg = termSession.foregroundProcessName()
+        } else if (termSession && termSession.foregroundProcessName !== undefined) {
+          fg = String(termSession.foregroundProcessName || "")
+        }
+        if (fg && fg !== "bash" && fg !== "sh" && fg !== "zsh" && fg !== "fish") {
+          if (root.activeLine !== fg) {
+            root.activeLine = fg
+            root.lineUpdated(fg)
+          }
+        } else if (fg === "bash" || fg === "sh" || fg === "zsh" || fg === "fish") {
+          if (root.activeLine !== root.typedLine) {
+            root.activeLine = root.typedLine
+            root.lineUpdated(root.typedLine)
+          }
+        }
+      } catch(e) {}
     }
   }
 
@@ -65,6 +103,21 @@ Item {
           terminal.pasteClipboard()
           event.accepted = true
           return
+        }
+      }
+
+      if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+        root.updateTyped("")
+      } else if (event.key === Qt.Key_Backspace) {
+        if (root.typedLine.length > 0) {
+          root.updateTyped(root.typedLine.slice(0, -1))
+        }
+      } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_C || event.key === Qt.Key_U)) {
+        root.updateTyped("")
+      } else if (event.text && event.text.length > 0 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
+        var ch = event.text
+        if (ch >= " " && ch !== "\r" && ch !== "\n") {
+          root.updateTyped(root.typedLine + ch)
         }
       }
     }

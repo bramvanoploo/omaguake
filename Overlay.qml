@@ -26,7 +26,7 @@ Item {
   property int currentTabIndex: 0
   property int nextTabId: 2
   property var tabs: [
-    { id: 1, title: "1: Default Terminal", shellName: "bash" }
+    { id: 1, title: "1: ~", shellName: "bash", cwd: "~", activeLine: "" }
   ]
 
   property string terminalIcon: "\uf489"
@@ -67,8 +67,10 @@ Item {
     var newTabs = tabs.slice()
     newTabs.push({
       id: newId,
-      title: newId + ": Terminal",
-      shellName: "bash"
+      title: newId + ": ~",
+      shellName: "bash",
+      cwd: "~",
+      activeLine: ""
     })
     tabs = newTabs
     currentTabIndex = tabs.length - 1
@@ -94,16 +96,41 @@ Item {
   function updateTabTitle(index, newTitle) {
     if (index >= 0 && index < tabs.length) {
       var newTabs = tabs.slice()
+      var tab = newTabs[index]
       var shortTitle = newTitle
       if (shortTitle.indexOf(":") !== -1) {
         var parts = shortTitle.split(":")
-        shortTitle = parts[parts.length - 1]
+        shortTitle = parts[parts.length - 1].trim()
+      } else {
+        shortTitle = shortTitle.trim()
       }
-      if (shortTitle.length > 25) shortTitle = shortTitle.substring(0, 22) + "…"
+      var cwd = shortTitle || "~"
+      var activeLine = tab.activeLine || ""
+      var displayTitle = tab.id + ": " + cwd + (activeLine ? " " + activeLine : "")
       newTabs[index] = {
-        id: tabs[index].id,
-        title: tabs[index].id + ": " + shortTitle,
-        shellName: shortTitle
+        id: tab.id,
+        title: displayTitle,
+        shellName: cwd,
+        cwd: cwd,
+        activeLine: activeLine
+      }
+      tabs = newTabs
+    }
+  }
+
+  function updateActiveLine(index, lineText) {
+    if (index >= 0 && index < tabs.length) {
+      var newTabs = tabs.slice()
+      var tab = newTabs[index]
+      var cwd = tab.cwd || "~"
+      var trimmed = String(lineText || "").trim()
+      var displayTitle = tab.id + ": " + cwd + (trimmed ? " " + trimmed : "")
+      newTabs[index] = {
+        id: tab.id,
+        title: displayTitle,
+        shellName: tab.shellName || cwd,
+        cwd: cwd,
+        activeLine: trimmed
       }
       tabs = newTabs
     }
@@ -350,6 +377,9 @@ Item {
             onTitleUpdated: function(newTitle) {
               root.updateTabTitle(index, newTitle)
             }
+            onLineUpdated: function(lineText) {
+              root.updateActiveLine(index, lineText)
+            }
             onProcessExited: function(code) {
               root.closeTab(index)
             }
@@ -408,7 +438,7 @@ Item {
               delegate: Rectangle {
                 id: tabItem
                 readonly property bool isActive: index === root.currentTabIndex
-                width: Math.max(Style.space(120), tabLabel.implicitWidth + (closeBtn.visible ? 28 : 12) + 20)
+                width: Style.space(160)
                 height: 30
                 radius: Style.cornerRadius > 0 ? 4 : 0
                 color: isActive ? Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.85) : "transparent"
@@ -424,19 +454,35 @@ Item {
                   }
                 }
 
-                Text {
-                  id: tabLabel
+                Row {
+                  id: tabContentRow
                   anchors.left: parent.left
                   anchors.leftMargin: 10
                   anchors.right: closeBtn.visible ? closeBtn.left : parent.right
                   anchors.rightMargin: 6
                   anchors.verticalCenter: parent.verticalCenter
-                  text: root.terminalIcon + " " + modelData.title
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.bodySmall
-                  font.bold: tabItem.isActive
-                  color: tabItem.isActive ? Color.foreground : Color.muted
-                  elide: Text.ElideRight
+                  spacing: 8
+
+                  Text {
+                    id: tabIcon
+                    text: root.terminalIcon
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall
+                    color: tabItem.isActive ? Color.accent : Color.muted
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+
+                  Text {
+                    id: tabLabel
+                    text: modelData.title
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall
+                    font.bold: tabItem.isActive
+                    color: tabItem.isActive ? Color.foreground : Color.muted
+                    anchors.verticalCenter: parent.verticalCenter
+                    elide: Text.ElideRight
+                    width: Math.max(0, tabContentRow.width - tabIcon.width - tabContentRow.spacing)
+                  }
                 }
 
                 // Close button on tab
