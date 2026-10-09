@@ -201,19 +201,17 @@ Item {
     }
   }
 
-  Connections {
-    target: root
-    function onActiveTabChanged() {
-      if (root.activeTab) {
-        root.refreshTerminal()
-        refreshTimer.restart()
-      }
+  onActiveTabChanged: {
+    if (activeTab) {
+      refreshTerminal()
+      refreshTimer.restart()
     }
-    function onVisibleChanged() {
-      if (root.visible && root.activeTab) {
-        root.refreshTerminal()
-        refreshTimer.restart()
-      }
+  }
+
+  onVisibleChanged: {
+    if (visible && activeTab) {
+      refreshTerminal()
+      refreshTimer.restart()
     }
   }
 

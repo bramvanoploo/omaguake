@@ -22,12 +22,10 @@ Item {
     pluginDir: root.pluginDir
   }
 
-  // Tab management model: starts with 1 tab open
+  // Tab management model: starts empty, tab 1 is created on completed
   property int currentTabIndex: 0
-  property int nextTabId: 2
-  property var tabs: [
-    { id: 1, title: "1: ~", shellName: "bash", cwd: "~", lastCommand: "" }
-  ]
+  property int nextTabId: 1
+  property var tabs: []
 
   property string terminalIcon: "\uf489"
   property string currentSchemeName: "Omaguake"
@@ -50,9 +48,20 @@ Item {
   function close() { hide() }
   function toggle() { opened ? hide() : show() }
 
+  function updateTerminalVisibility() {
+    for (var i = 0; i < root.tabs.length; i++) {
+      var item = root.tabs[i].termItem
+      if (item) {
+        var isCurrent = (i === root.currentTabIndex)
+        item.visible = isCurrent
+        item.activeTab = (isCurrent && root.opened)
+      }
+    }
+  }
+
   function refreshActiveTerminal() {
-    if (terminalRepeater) {
-      var item = terminalRepeater.itemAt(root.currentTabIndex)
+    if (root.tabs.length > 0 && root.currentTabIndex >= 0 && root.currentTabIndex < root.tabs.length) {
+      var item = root.tabs[root.currentTabIndex].termItem
       if (item && typeof item.refreshTerminal === "function") {
         item.refreshTerminal()
       }
@@ -60,6 +69,7 @@ Item {
   }
 
   onCurrentTabIndexChanged: {
+    root.updateTerminalVisibility()
     Qt.callLater(function() { root.refreshActiveTerminal() })
   }
 
@@ -67,6 +77,7 @@ Item {
     root.opened = true
     hideAnim.stop()
     showAnim.start()
+    root.updateTerminalVisibility()
     Qt.callLater(function() { root.refreshActiveTerminal() })
   }
 
@@ -74,80 +85,133 @@ Item {
     root.opened = false
     showAnim.stop()
     hideAnim.start()
+    root.updateTerminalVisibility()
   }
 
   function createTab() {
     var newId = nextTabId++
+    var term = terminalComponent.createObject(terminalArea, {
+      tabId: String(newId),
+      schemeName: root.currentSchemeName,
+      visible: false,
+      activeTab: false
+    })
+
+    if (!term) {
+      console.warn("Failed to create TerminalView object for tab " + newId)
+      return
+    }
+
+    term.titleUpdated.connect(function(newTitle) {
+      root.updateTabTitleById(newId, newTitle)
+    })
+    term.commandUpdated.connect(function(cmdText) {
+      root.updateLastCommandById(newId, cmdText)
+    })
+    term.processExited.connect(function(code) {
+      root.closeTabById(newId)
+    })
+
     var newTabs = tabs.slice()
     newTabs.push({
       id: newId,
       title: newId + ": ~",
       shellName: "bash",
       cwd: "~",
-      lastCommand: ""
+      lastCommand: "",
+      termItem: term
     })
     tabs = newTabs
     currentTabIndex = tabs.length - 1
+    root.updateTerminalVisibility()
     Qt.callLater(function() {
+      root.refreshActiveTerminal()
       tabsFlick.contentX = Math.max(0, tabsRow.width - tabsFlick.width)
     })
   }
 
   function closeTab(index) {
+    if (index < 0 || index >= tabs.length) return
+    var tabToClose = tabs[index]
+    if (tabToClose.termItem) {
+      tabToClose.termItem.destroy()
+    }
+
     if (tabs.length <= 1) {
-      // If closing the only tab, hide panel or reset
+      tabs = []
       root.hide()
+      root.createTab()
       return
     }
+
     var newTabs = tabs.slice()
     newTabs.splice(index, 1)
     tabs = newTabs
     if (currentTabIndex >= tabs.length) {
       currentTabIndex = tabs.length - 1
     }
+    root.updateTerminalVisibility()
+    Qt.callLater(function() { root.refreshActiveTerminal() })
   }
 
-  function updateTabTitle(index, newTitle) {
-    if (index >= 0 && index < tabs.length) {
-      var newTabs = tabs.slice()
-      var tab = newTabs[index]
-      var shortTitle = newTitle
-      if (shortTitle.indexOf(":") !== -1) {
-        var parts = shortTitle.split(":")
-        shortTitle = parts[parts.length - 1].trim()
-      } else {
-        shortTitle = shortTitle.trim()
+  function closeTabById(targetId) {
+    for (var i = 0; i < tabs.length; i++) {
+      if (tabs[i].id === targetId) {
+        closeTab(i)
+        return
       }
-      var cwd = shortTitle || "~"
-      var lastCommand = tab.lastCommand || ""
-      var displayTitle = tab.id + ": " + cwd + (lastCommand ? " " + lastCommand : "")
-      newTabs[index] = {
-        id: tab.id,
-        title: displayTitle,
-        shellName: cwd,
-        cwd: cwd,
-        lastCommand: lastCommand
-      }
-      tabs = newTabs
     }
   }
 
-  function updateLastCommand(index, cmdText) {
-    if (index >= 0 && index < tabs.length) {
-      var newTabs = tabs.slice()
-      var tab = newTabs[index]
-      var cwd = tab.cwd || "~"
-      var trimmed = String(cmdText || "").trim()
-      if (trimmed.length > 0) {
-        var displayTitle = tab.id + ": " + cwd + " " + trimmed
-        newTabs[index] = {
+  function updateTabTitleById(targetId, newTitle) {
+    for (var i = 0; i < tabs.length; i++) {
+      if (tabs[i].id === targetId) {
+        var tab = tabs[i]
+        var shortTitle = newTitle
+        if (shortTitle.indexOf(":") !== -1) {
+          var parts = shortTitle.split(":")
+          shortTitle = parts[parts.length - 1].trim()
+        } else {
+          shortTitle = shortTitle.trim()
+        }
+        var cwd = shortTitle || "~"
+        var lastCmd = tab.lastCommand || ""
+        var displayTitle = tab.id + ": " + cwd + (lastCmd ? " " + lastCmd : "")
+        var newTabs = tabs.slice()
+        newTabs[i] = {
           id: tab.id,
           title: displayTitle,
-          shellName: tab.shellName || cwd,
+          shellName: cwd,
           cwd: cwd,
-          lastCommand: trimmed
+          lastCommand: lastCmd,
+          termItem: tab.termItem
         }
         tabs = newTabs
+        return
+      }
+    }
+  }
+
+  function updateLastCommandById(targetId, cmdText) {
+    for (var i = 0; i < tabs.length; i++) {
+      if (tabs[i].id === targetId) {
+        var tab = tabs[i]
+        var cwd = tab.cwd || "~"
+        var trimmed = String(cmdText || "").trim()
+        if (trimmed.length > 0) {
+          var displayTitle = tab.id + ": " + cwd + " " + trimmed
+          var newTabs = tabs.slice()
+          newTabs[i] = {
+            id: tab.id,
+            title: displayTitle,
+            shellName: tab.shellName || cwd,
+            cwd: cwd,
+            lastCommand: trimmed,
+            termItem: tab.termItem
+          }
+          tabs = newTabs
+        }
+        return
       }
     }
   }
@@ -203,6 +267,7 @@ Item {
     function open(): void { root.show() }
     function close(): void { root.hide() }
     function newTab(): void { root.createTab() }
+    function selectTab(index: int): void { root.currentTabIndex = index }
     function retheme(): void { root.reloadTheme() }
   }
 
@@ -214,6 +279,7 @@ Item {
     function open(): void { root.show() }
     function close(): void { root.hide() }
     function newTab(): void { root.createTab() }
+    function selectTab(index: int): void { root.currentTabIndex = index }
     function retheme(): void { root.reloadTheme() }
   }
 
@@ -242,12 +308,10 @@ Item {
   }
 
   function notifyTabsRetheme() {
-    if (terminalRepeater) {
-      for (var i = 0; i < terminalRepeater.count; i++) {
-        var item = terminalRepeater.itemAt(i)
-        if (item && typeof item.reloadColorScheme === "function") {
-          item.reloadColorScheme(root.currentSchemeName)
-        }
+    for (var i = 0; i < root.tabs.length; i++) {
+      var item = root.tabs[i].termItem
+      if (item && typeof item.reloadColorScheme === "function") {
+        item.reloadColorScheme(root.currentSchemeName)
       }
     }
   }
@@ -257,6 +321,7 @@ Item {
   }
 
   Component.onCompleted: {
+    root.createTab()
     root.reloadTheme()
   }
 
@@ -383,24 +448,11 @@ Item {
         height: parent.height - tabBar.height
         clip: true
 
-        Repeater {
-          id: terminalRepeater
-          model: root.tabs.length
-          delegate: TerminalView {
+        Component {
+          id: terminalComponent
+          TerminalView {
             anchors.fill: parent
-            visible: index === root.currentTabIndex
-            activeTab: visible && root.opened
-            tabId: String(root.tabs[index].id)
             schemeName: root.currentSchemeName
-            onTitleUpdated: function(newTitle) {
-              root.updateTabTitle(index, newTitle)
-            }
-            onCommandUpdated: function(cmdText) {
-              root.updateLastCommand(index, cmdText)
-            }
-            onProcessExited: function(code) {
-              root.closeTab(index)
-            }
           }
         }
       }
