@@ -488,42 +488,6 @@ PopupCard {
         }
       }
 
-      // Status indicator
-      Row {
-        spacing: Style.spacing.sm
-        Rectangle {
-          height: 26
-          width: keyStatusRow.implicitWidth + 16
-          radius: Style.cornerRadius > 0 ? 4 : 0
-          color: root.currentKeybinding ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
-          border.color: root.currentKeybinding ? Color.accent : Color.menu.border
-          border.width: 1
-
-          Row {
-            id: keyStatusRow
-            anchors.centerIn: parent
-            spacing: 6
-            Text {
-              text: root.currentKeybinding ? ("⌨ " + root.currentKeybinding) : "No shortcut configured"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-              font.bold: !!root.currentKeybinding
-              color: root.currentKeybinding ? Color.accent : Color.muted
-              anchors.verticalCenter: parent.verticalCenter
-            }
-          }
-        }
-
-        // Remove shortcut button if active
-        Button {
-          visible: !!root.currentKeybinding
-          text: "Remove"
-          fontSize: Style.font.caption
-          tooltipText: "Disable global shortcut"
-          onClicked: root.applyKeybindingDirectly("", false)
-        }
-      }
-
       // Action buttons row
       Row {
         spacing: Style.spacing.sm
@@ -533,7 +497,7 @@ PopupCard {
           id: applySuggestedKeyBtn
           readonly property bool isSuggestedAssigned: root.currentKeybinding === "CTRL + SPACE"
           readonly property bool isSuggestedDisabled: root.suggestedKeyConflict && !isSuggestedAssigned
-          text: isSuggestedAssigned ? "✓ CTRL + SPACE Active" : "Apply Suggested (CTRL + SPACE)"
+          text: isSuggestedAssigned ? "✓ CTRL + SPACE" : "Apply Suggested (CTRL + SPACE)"
           enabled: !isSuggestedDisabled && !isSuggestedAssigned
           selected: isSuggestedAssigned
           opacity: enabled ? 1.0 : (isSuggestedAssigned ? 0.9 : 0.45)
@@ -547,8 +511,12 @@ PopupCard {
 
         // Record Custom Keybinding button
         Button {
-          text: "Record Custom Shortcut…"
-          tooltipText: "Record any keyboard shortcut with automatic conflict resolution"
+          readonly property bool isCustomAssigned: !!root.currentKeybinding && root.currentKeybinding !== "CTRL + SPACE"
+          text: isCustomAssigned ? ("✓ " + root.currentKeybinding) : "Record Custom Shortcut…"
+          selected: isCustomAssigned
+          tooltipText: isCustomAssigned
+            ? (root.currentKeybinding + " is currently assigned. Click to record a different shortcut.")
+            : "Record any keyboard shortcut with automatic conflict resolution"
           onClicked: {
             root.recordedChord = ""
             root.recordedConflict = false
@@ -559,6 +527,15 @@ PopupCard {
               recordKeyCatcher.forceActiveFocus()
             })
           }
+        }
+
+        // Remove shortcut button
+        Button {
+          visible: !!root.currentKeybinding
+          iconText: "\uf1f8"
+          iconSize: Style.font.body
+          tooltipText: "Remove global shortcut"
+          onClicked: root.applyKeybindingDirectly("", false)
         }
       }
     }
@@ -591,42 +568,6 @@ PopupCard {
         }
       }
 
-      // Status indicator
-      Row {
-        spacing: Style.spacing.sm
-        Rectangle {
-          height: 26
-          width: gestStatusRow.implicitWidth + 16
-          radius: Style.cornerRadius > 0 ? 4 : 0
-          color: root.gesturesEnabled ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
-          border.color: root.gesturesEnabled ? Color.accent : Color.menu.border
-          border.width: 1
-
-          Row {
-            id: gestStatusRow
-            anchors.centerIn: parent
-            spacing: 6
-            Text {
-              text: root.gesturesEnabled ? ("🖐 " + root.gestureFingers + "-finger swipe (down = show, up = hide)") : "No gestures configured"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-              font.bold: root.gesturesEnabled
-              color: root.gesturesEnabled ? Color.accent : Color.muted
-              anchors.verticalCenter: parent.verticalCenter
-            }
-          }
-        }
-
-        // Remove gestures button if active
-        Button {
-          visible: root.gesturesEnabled
-          text: "Remove"
-          fontSize: Style.font.caption
-          tooltipText: "Disable touchpad gestures"
-          onClicked: root.applyGesturesDirectly(false, 3)
-        }
-      }
-
       // Action buttons row
       Row {
         spacing: Style.spacing.sm
@@ -635,13 +576,14 @@ PopupCard {
         Button {
           id: applySuggestedGestBtn
           readonly property bool isSuggestedDisabled: root.suggestedGestureConflict && !root.gesturesEnabled
-          text: (root.gesturesEnabled && root.gestureFingers === 3) ? "✓ 3-Finger Swipe Active" : "Apply Suggested (3-Finger Swipe)"
-          enabled: !isSuggestedDisabled && !(root.gesturesEnabled && root.gestureFingers === 3)
-          selected: root.gesturesEnabled && root.gestureFingers === 3
-          opacity: enabled ? 1.0 : ((root.gesturesEnabled && root.gestureFingers === 3) ? 0.9 : 0.45)
+          readonly property bool isSuggestedGestAssigned: root.gesturesEnabled && root.gestureFingers === 3
+          text: isSuggestedGestAssigned ? "✓ 3-Finger Swipe" : "Apply Suggested (3-Finger Swipe)"
+          enabled: !isSuggestedDisabled && !isSuggestedGestAssigned
+          selected: isSuggestedGestAssigned
+          opacity: enabled ? 1.0 : (isSuggestedGestAssigned ? 0.9 : 0.45)
           tooltipText: isSuggestedDisabled
             ? (root.suggestedGestureConflictMessage || "3-finger gestures conflict with existing system settings.")
-            : ((root.gesturesEnabled && root.gestureFingers === 3) ? "3-finger gestures are active" : "Enable 3-finger swipe down to show, swipe up to hide")
+            : (isSuggestedGestAssigned ? "3-finger gestures are enabled" : "Enable 3-finger swipe down to show, swipe up to hide")
           onClicked: {
             root.applyGesturesDirectly(true, 3)
           }
@@ -649,13 +591,26 @@ PopupCard {
 
         // Custom Gestures button
         Button {
-          text: "Custom Gestures…"
-          tooltipText: "Select 3-finger or 4-finger gestures with conflict checking"
+          readonly property bool isCustomGestAssigned: root.gesturesEnabled && root.gestureFingers !== 3
+          text: isCustomGestAssigned ? ("✓ " + root.gestureFingers + "-Finger Swipe") : "Custom Gestures…"
+          selected: isCustomGestAssigned
+          tooltipText: isCustomGestAssigned
+            ? (root.gestureFingers + "-finger gestures are enabled. Click to customize.")
+            : "Select 3-finger or 4-finger gestures with conflict checking"
           onClicked: {
             root.candidateGestureFingers = root.gestureFingers || 3
             root.checkCustomGesture(root.candidateGestureFingers)
             root.customGesturesDialogOpen = true
           }
+        }
+
+        // Remove gestures button
+        Button {
+          visible: root.gesturesEnabled
+          iconText: "\uf1f8"
+          iconSize: Style.font.body
+          tooltipText: "Remove touchpad gestures"
+          onClicked: root.applyGesturesDirectly(false, 3)
         }
       }
     }

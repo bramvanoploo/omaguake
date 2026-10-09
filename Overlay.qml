@@ -26,7 +26,7 @@ Item {
   property int currentTabIndex: 0
   property int nextTabId: 2
   property var tabs: [
-    { id: 1, title: "1: ~", shellName: "bash", cwd: "~", activeLine: "" }
+    { id: 1, title: "1: ~", shellName: "bash", cwd: "~", lastCommand: "" }
   ]
 
   property string terminalIcon: "\uf489"
@@ -50,10 +50,24 @@ Item {
   function close() { hide() }
   function toggle() { opened ? hide() : show() }
 
+  function refreshActiveTerminal() {
+    if (terminalRepeater) {
+      var item = terminalRepeater.itemAt(root.currentTabIndex)
+      if (item && typeof item.refreshTerminal === "function") {
+        item.refreshTerminal()
+      }
+    }
+  }
+
+  onCurrentTabIndexChanged: {
+    Qt.callLater(function() { root.refreshActiveTerminal() })
+  }
+
   function show() {
     root.opened = true
     hideAnim.stop()
     showAnim.start()
+    Qt.callLater(function() { root.refreshActiveTerminal() })
   }
 
   function hide() {
@@ -70,7 +84,7 @@ Item {
       title: newId + ": ~",
       shellName: "bash",
       cwd: "~",
-      activeLine: ""
+      lastCommand: ""
     })
     tabs = newTabs
     currentTabIndex = tabs.length - 1
@@ -105,34 +119,36 @@ Item {
         shortTitle = shortTitle.trim()
       }
       var cwd = shortTitle || "~"
-      var activeLine = tab.activeLine || ""
-      var displayTitle = tab.id + ": " + cwd + (activeLine ? " " + activeLine : "")
+      var lastCommand = tab.lastCommand || ""
+      var displayTitle = tab.id + ": " + cwd + (lastCommand ? " " + lastCommand : "")
       newTabs[index] = {
         id: tab.id,
         title: displayTitle,
         shellName: cwd,
         cwd: cwd,
-        activeLine: activeLine
+        lastCommand: lastCommand
       }
       tabs = newTabs
     }
   }
 
-  function updateActiveLine(index, lineText) {
+  function updateLastCommand(index, cmdText) {
     if (index >= 0 && index < tabs.length) {
       var newTabs = tabs.slice()
       var tab = newTabs[index]
       var cwd = tab.cwd || "~"
-      var trimmed = String(lineText || "").trim()
-      var displayTitle = tab.id + ": " + cwd + (trimmed ? " " + trimmed : "")
-      newTabs[index] = {
-        id: tab.id,
-        title: displayTitle,
-        shellName: tab.shellName || cwd,
-        cwd: cwd,
-        activeLine: trimmed
+      var trimmed = String(cmdText || "").trim()
+      if (trimmed.length > 0) {
+        var displayTitle = tab.id + ": " + cwd + " " + trimmed
+        newTabs[index] = {
+          id: tab.id,
+          title: displayTitle,
+          shellName: tab.shellName || cwd,
+          cwd: cwd,
+          lastCommand: trimmed
+        }
+        tabs = newTabs
       }
-      tabs = newTabs
     }
   }
 
@@ -144,6 +160,7 @@ Item {
     to: 1.0
     duration: 250
     easing.type: Easing.OutCubic
+    onFinished: root.refreshActiveTerminal()
   }
 
   NumberAnimation {
@@ -282,6 +299,7 @@ Item {
     onTriggered: {
       if (root.opened) {
         root.focusPrimed = true
+        root.refreshActiveTerminal()
       }
     }
   }
@@ -377,8 +395,8 @@ Item {
             onTitleUpdated: function(newTitle) {
               root.updateTabTitle(index, newTitle)
             }
-            onLineUpdated: function(lineText) {
-              root.updateActiveLine(index, lineText)
+            onCommandUpdated: function(cmdText) {
+              root.updateLastCommand(index, cmdText)
             }
             onProcessExited: function(code) {
               root.closeTab(index)

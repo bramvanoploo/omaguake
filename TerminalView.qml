@@ -13,11 +13,11 @@ Item {
   property string currentTitle: "bash"
   property bool activeTab: false
 
-  property string activeLine: ""
+  property string lastCommand: ""
   property string typedLine: ""
 
   signal titleUpdated(string newTitle)
-  signal lineUpdated(string activeLineText)
+  signal commandUpdated(string commandText)
   signal processExited(int exitCode)
 
   property string schemeName: "Omaguake"
@@ -28,34 +28,29 @@ Item {
     }
   }
 
-  function updateTyped(newTyped) {
-    typedLine = newTyped
-    activeLine = newTyped
-    lineUpdated(newTyped)
+  function getForegroundProcess() {
+    try {
+      if (termSession && typeof termSession.foregroundProcessName === "function") {
+        return termSession.foregroundProcessName() || ""
+      } else if (termSession && termSession.foregroundProcessName !== undefined) {
+        return String(termSession.foregroundProcessName || "")
+      }
+    } catch(e) {}
+    return ""
   }
 
   Timer {
     id: procCheckTimer
-    interval: 500
+    interval: 250
     repeat: true
     running: root.activeTab
     onTriggered: {
       try {
-        var fg = ""
-        if (termSession && typeof termSession.foregroundProcessName === "function") {
-          fg = termSession.foregroundProcessName()
-        } else if (termSession && termSession.foregroundProcessName !== undefined) {
-          fg = String(termSession.foregroundProcessName || "")
-        }
+        var fg = root.getForegroundProcess()
         if (fg && fg !== "bash" && fg !== "sh" && fg !== "zsh" && fg !== "fish") {
-          if (root.activeLine !== fg) {
-            root.activeLine = fg
-            root.lineUpdated(fg)
-          }
-        } else if (fg === "bash" || fg === "sh" || fg === "zsh" || fg === "fish") {
-          if (root.activeLine !== root.typedLine) {
-            root.activeLine = root.typedLine
-            root.lineUpdated(root.typedLine)
+          if (!root.lastCommand || root.lastCommand.indexOf(fg) !== 0) {
+            root.lastCommand = fg
+            root.commandUpdated(fg)
           }
         }
       } catch(e) {}
@@ -101,29 +96,77 @@ Item {
           return
         } else if (event.key === Qt.Key_V) {
           terminal.pasteClipboard()
+          try {
+            var pasted = Quickshell.clipboardText || ""
+            if (pasted.length > 0) {
+              root.typedLine += pasted
+            }
+          } catch(e) {}
           event.accepted = true
           return
         }
       }
 
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        root.updateTyped("")
+        var fg = root.getForegroundProcess()
+        var isShell = (!fg || fg === "bash" || fg === "sh" || fg === "zsh" || fg === "fish")
+        if (isShell) {
+          var entered = root.typedLine.trim()
+          root.typedLine = ""
+          if (entered.length > 0) {
+            root.lastCommand = entered
+            root.commandUpdated(entered)
+          }
+        } else {
+          root.typedLine = ""
+        }
       } else if (event.key === Qt.Key_Backspace) {
         if (root.typedLine.length > 0) {
-          root.updateTyped(root.typedLine.slice(0, -1))
+          root.typedLine = root.typedLine.slice(0, -1)
         }
       } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_C || event.key === Qt.Key_U)) {
-        root.updateTyped("")
+        root.typedLine = ""
       } else if (event.text && event.text.length > 0 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
         var ch = event.text
         if (ch >= " " && ch !== "\r" && ch !== "\n") {
-          root.updateTyped(root.typedLine + ch)
+          root.typedLine += ch
         }
       }
     }
 
     Component.onCompleted: {
       termSession.startShellProgram()
+      if (root.activeTab) {
+        root.refreshTerminal()
+      }
+    }
+  }
+
+  MouseArea {
+    anchors.fill: parent
+    z: -1
+    onPressed: {
+      root.refreshTerminal()
+    }
+  }
+
+  function refreshTerminal() {
+    if (terminal) {
+      try {
+        if (typeof terminal.updateImage === "function") {
+          terminal.updateImage()
+        }
+      } catch(e) {}
+      try {
+        if (typeof terminal.updateCursor === "function") {
+          terminal.updateCursor()
+        }
+      } catch(e) {}
+      try {
+        if (typeof terminal.update === "function") {
+          terminal.update()
+        }
+      } catch(e) {}
       if (root.activeTab) {
         terminal.forceActiveFocus()
       }
@@ -158,11 +201,34 @@ Item {
     }
   }
 
-  onActiveTabChanged: {
-    if (activeTab) {
-      Qt.callLater(function() {
-        terminal.forceActiveFocus()
-      })
+  Connections {
+    target: root
+    function onActiveTabChanged() {
+      if (root.activeTab) {
+        root.refreshTerminal()
+        refreshTimer.restart()
+      }
+    }
+    function onVisibleChanged() {
+      if (root.visible && root.activeTab) {
+        root.refreshTerminal()
+        refreshTimer.restart()
+      }
+    }
+  }
+
+  Timer {
+    id: refreshTimer
+    interval: 60
+    repeat: true
+    property int count: 0
+    onTriggered: {
+      count++
+      root.refreshTerminal()
+      if (count >= 5) {
+        refreshTimer.stop()
+        count = 0
+      }
     }
   }
 }

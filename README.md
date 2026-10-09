@@ -38,30 +38,24 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
 
 ## Installation
 
-   ```bash
-   omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
-   ```
-
-## Installation
-
-   ```bash
-   omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
-   ```
+```bash
+omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
+```
 
 ## Uninstall
 
-  1. Remove the plugin
-  
-   ```bash
-   omarchy plugin remove bramvanoploo.omaguake
-   ```
+1. Remove the plugin
 
-  2. Remove the custom bindings from `~/.config/hypr/bindings.lua`
-  ```lua
-  -- BEGIN bramvanoploo.omaguake
-  ....
-  -- END bramvanoploo.omaguake
-  ```
+```bash
+omarchy plugin remove bramvanoploo.omaguake
+```
+
+2. Remove the custom bindings from `~/.config/hypr/bindings.lua`
+```lua
+-- BEGIN bramvanoploo.omaguake
+....
+-- END bramvanoploo.omaguake
+```
 
 ## Configuration
 
@@ -71,6 +65,12 @@ Right-click the Omaguake bar icon to open the configuration overlay:
 - **Keybinding**: Enter any key chord; live validation alerts if the chord is already bound.
 - **Trackpad Gestures**: Toggle 3-finger swipe gestures; alerts if gestures conflict with other settings.
 - **Auto-hide**: Toggle auto-hide on focus loss.
+
+## Third-Party Dependencies
+
+### [QMLTermWidget](https://github.com/Swordfish90/qmltermwidget)
+- **License**: [GPL-2.0](https://github.com/Swordfish90/qmltermwidget/blob/master/LICENSE)
+- **How it is used**: Omaguake embeds QMLTermWidget to provide native terminal emulation directly inside the Quickshell Qt overlay. Each open tab runs an embedded `QMLTermWidget` and `QMLTermSession` instance providing real pseudo-terminal (PTY) allocation, interactive process lifecycle management, VT100/ANSI terminal sequences, and clipboard integration. Omaguake dynamically generates and hot-reloads custom `.colorscheme` files synced with the active Omarchy system theme and font settings.
 
 ## License
 
