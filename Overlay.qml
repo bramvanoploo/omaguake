@@ -258,10 +258,9 @@ Item {
       // Terminal Content Area
       Item {
         id: terminalArea
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: config.tabsPosition === "top" ? tabBar.bottom : parent.top
-        anchors.bottom: config.tabsPosition === "bottom" ? tabBar.top : parent.bottom
+        width: parent.width
+        y: config.tabsPosition === "top" ? tabBar.height : 0
+        height: parent.height - tabBar.height
         clip: true
 
         Repeater {
@@ -271,7 +270,6 @@ Item {
             visible: index === root.currentTabIndex
             activeTab: visible && root.opened
             tabId: String(root.tabs[index].id)
-            bridgeScript: config.ptyBridgeScript
             onTitleUpdated: function(newTitle) {
               root.updateTabTitle(index, newTitle)
             }
@@ -285,11 +283,9 @@ Item {
       // Tab Bar (Bottom by default, or Top when configured)
       Rectangle {
         id: tabBar
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: config.tabsPosition === "top" ? parent.top : undefined
-        anchors.bottom: config.tabsPosition === "bottom" ? parent.bottom : undefined
+        width: parent.width
         height: 38
+        y: config.tabsPosition === "top" ? 0 : parent.height - height
         color: Qt.rgba(Color.background.r * 0.75, Color.background.g * 0.75, Color.background.b * 0.75, Math.min(0.96, container.cardOpacity + 0.05))
         border.color: Color.menu.border
         border.width: 1
