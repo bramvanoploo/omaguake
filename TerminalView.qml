@@ -3,7 +3,7 @@ import QtQuick.Controls
 import Quickshell
 import qs.Commons
 import qs.Ui
-import "QMLTermWidget"
+import QMLTermWidget 2.0
 
 Item {
   id: root
@@ -16,13 +16,21 @@ Item {
   signal titleUpdated(string newTitle)
   signal processExited(int exitCode)
 
+  property string schemeName: "Omaguake"
+
+  onSchemeNameChanged: {
+    if (terminal && schemeName.length > 0) {
+      terminal.colorScheme = schemeName
+    }
+  }
+
   QMLTermWidget {
     id: terminal
     anchors.fill: parent
     anchors.margins: 4
     focus: root.activeTab
 
-    colorScheme: "Omaguake"
+    colorScheme: root.schemeName
     font.family: (Style.resolvedFontFamily && Style.resolvedFontFamily !== "monospace")
       ? Style.resolvedFontFamily
       : "JetBrainsMono Nerd Font"
@@ -59,6 +67,8 @@ Item {
     }
 
     Component.onCompleted: {
+      console.log("[Omaguake Debug] availableColorSchemes:", JSON.stringify(terminal.availableColorSchemes))
+      console.log("[Omaguake Debug] active colorScheme:", terminal.colorScheme)
       termSession.startShellProgram()
       if (root.activeTab) {
         terminal.forceActiveFocus()
@@ -66,10 +76,13 @@ Item {
     }
   }
 
-  function reloadColorScheme() {
-    var cs = terminal.colorScheme
-    terminal.colorScheme = ""
-    terminal.colorScheme = cs || "Omaguake"
+  function reloadColorScheme(newScheme) {
+    if (newScheme && newScheme.length > 0) {
+      root.schemeName = newScheme
+    }
+    if (terminal) {
+      terminal.colorScheme = root.schemeName
+    }
   }
 
   Connections {

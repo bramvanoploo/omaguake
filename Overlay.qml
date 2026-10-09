@@ -29,6 +29,22 @@ Item {
     { id: 1, title: "1: Default Terminal", shellName: "bash" }
   ]
 
+  property string currentSchemeName: "Omaguake"
+
+  FileView {
+    id: currentSchemeFile
+    path: root.pluginDir + "/current_scheme.txt"
+    watchChanges: true
+    printErrors: false
+    onLoaded: {
+      var name = String(text() || "").trim()
+      if (name.length > 0) {
+        root.currentSchemeName = name
+      }
+    }
+    onFileChanged: reload()
+  }
+
   function open() { show() }
   function close() { hide() }
   function toggle() { opened ? hide() : show() }
@@ -157,6 +173,15 @@ Item {
   Process {
     id: themeSyncProc
     command: [root.pluginDir + "/scripts/sync-theme.py"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var name = String(text || "").trim()
+        if (name.length > 0) {
+          root.currentSchemeName = name
+        }
+      }
+    }
     onExited: function(exitCode, exitStatus) {
       root.notifyTabsRetheme()
     }
@@ -174,10 +199,18 @@ Item {
       for (var i = 0; i < terminalRepeater.count; i++) {
         var item = terminalRepeater.itemAt(i)
         if (item && typeof item.reloadColorScheme === "function") {
-          item.reloadColorScheme()
+          item.reloadColorScheme(root.currentSchemeName)
         }
       }
     }
+  }
+
+  onCurrentSchemeNameChanged: {
+    root.notifyTabsRetheme()
+  }
+
+  Component.onCompleted: {
+    root.reloadTheme()
   }
 
   Connections {
@@ -319,6 +352,7 @@ Item {
             visible: index === root.currentTabIndex
             activeTab: visible && root.opened
             tabId: String(root.tabs[index].id)
+            schemeName: root.currentSchemeName
             onTitleUpdated: function(newTitle) {
               root.updateTabTitle(index, newTitle)
             }
