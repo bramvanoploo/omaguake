@@ -36,33 +36,32 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
   - **Left-click**: Toggle Omaguake dropdown terminal.
   - **Right-click**: Open the plugin configuration overlay.
 
-## Installation & Setup
+## Installation
 
-1. Symlink or clone into your Omarchy plugins directory:
    ```bash
-   ln -s /home/bram/Projects/omaguake ~/.config/omarchy/plugins/bramvanoploo.omaguake
+   omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
    ```
 
-2. Rescan plugins and enable:
+## Installation
+
    ```bash
-   omarchy-shell shell rescanPlugins
-   omarchy plugin enable bramvanoploo.omaguake
+   omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
    ```
 
-3. Add `bramvanoploo.omaguake` to your status bar layout in `~/.config/omarchy/shell.json` or use:
+## Uninstall
+
+  1. Remove the plugin
+  
    ```bash
-   omarchy bar move bramvanoploo.omaguake --section right
+   omarchy plugin remove bramvanoploo.omaguake
    ```
 
-4. Keybinding and gesture hooks in `~/.config/hypr/bindings.lua`:
-   ```lua
-   -- BEGIN bramvanoploo.omaguake
-   hl.bind("CTRL + SPACE", hl.dsp.global("bramvanoploo.omaguake:toggle"))
-   hl.gesture({ fingers = 3, direction = "down", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:show")) end })
-   hl.gesture({ fingers = 3, direction = "up", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:hide")) end })
-   -- END bramvanoploo.omaguake
-   ```
-   (This is also managed automatically via the right-click configuration overlay).
+  2. Remove the custom bindings from `~/.config/hypr/bindings.lua`
+  ```lua
+  -- BEGIN bramvanoploo.omaguake
+  ....
+  -- END bramvanoploo.omaguake
+  ```
 
 ## Configuration
 
