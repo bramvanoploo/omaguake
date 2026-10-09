@@ -89,22 +89,28 @@ Item {
     }
 
     Keys.onPressed: function(event) {
-      if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier)) {
-        if (event.key === Qt.Key_C) {
-          terminal.copyClipboard()
-          event.accepted = true
-          return
-        } else if (event.key === Qt.Key_V) {
-          terminal.pasteClipboard()
-          try {
-            var pasted = Quickshell.clipboardText || ""
-            if (pasted.length > 0) {
-              root.typedLine += pasted
-            }
-          } catch(e) {}
-          event.accepted = true
-          return
-        }
+      var isCopy = ((event.modifiers & Qt.MetaModifier) && event.key === Qt.Key_C) ||
+                   ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_C) ||
+                   ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Insert)
+
+      var isPaste = ((event.modifiers & Qt.MetaModifier) && event.key === Qt.Key_V) ||
+                    ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_V) ||
+                    ((event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_Insert)
+
+      if (isCopy) {
+        terminal.copyClipboard()
+        event.accepted = true
+        return
+      } else if (isPaste) {
+        terminal.pasteClipboard()
+        try {
+          var pasted = Quickshell.clipboardText || ""
+          if (pasted.length > 0) {
+            root.typedLine += pasted
+          }
+        } catch(e) {}
+        event.accepted = true
+        return
       }
 
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
