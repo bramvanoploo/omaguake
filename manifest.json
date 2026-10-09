@@ -22,7 +22,7 @@
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "heightPercent": 45,
+      "heightPercent": 50,
       "overlayOpacityPercent": 90,
       "tabsPosition": "bottom",
       "keybinding": "",

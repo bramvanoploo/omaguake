@@ -13,7 +13,7 @@ PopupCard {
   // Configuration properties
   property string currentKeybinding: ""
   property string candidateKeybinding: ""
-  property int panelHeightPercent: 45
+  property int panelHeightPercent: 50
   property int overlayOpacityPercent: 90
   property string tabsPosition: "bottom"
   property bool gesturesEnabled: false
@@ -57,7 +57,7 @@ PopupCard {
 
   function loadCurrentSettings() {
     if (configManager) {
-      panelHeightPercent = configManager.heightPercent || 45
+      panelHeightPercent = configManager.heightPercent || 50
       overlayOpacityPercent = configManager.overlayOpacityPercent || 90
       heightSlider.value = panelHeightPercent
       opacitySlider.value = overlayOpacityPercent
@@ -293,16 +293,30 @@ PopupCard {
         width: parent.width
         spacing: Style.spacing.sm
 
-        PanelSlider {
-          id: heightSlider
+        Item {
+          id: heightSliderContainer
           width: parent.width - heightPresetRow.width - Style.spacing.sm
-          minimum: 20
-          maximum: 100
-          step: 5
-          integer: true
-          value: root.panelHeightPercent
-          onMoved: function(v) {
-            root.panelHeightPercent = Math.round(v)
+          height: heightSlider.implicitHeight
+
+          PanelSlider {
+            id: heightSlider
+            anchors.fill: parent
+            minimum: 20
+            maximum: 100
+            step: 5
+            integer: true
+            value: root.panelHeightPercent
+            onMoved: function(v) {
+              root.panelHeightPercent = Math.round(v)
+            }
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: function(wheel) {
+              scrollArea.contentY = Math.max(0, Math.min(scrollArea.contentHeight - scrollArea.height, scrollArea.contentY - wheel.angleDelta.y))
+            }
           }
         }
 
@@ -310,7 +324,7 @@ PopupCard {
           id: heightPresetRow
           spacing: 4
           Repeater {
-            model: [30, 45, 60, 75, 100]
+            model: [30, 50, 75, 100]
             delegate: Button {
               text: modelData + "%"
               fontSize: Style.font.caption
@@ -357,16 +371,30 @@ PopupCard {
         width: parent.width
         spacing: Style.spacing.sm
 
-        PanelSlider {
-          id: opacitySlider
+        Item {
+          id: opacitySliderContainer
           width: parent.width - opacityPresetRow.width - Style.spacing.sm
-          minimum: 20
-          maximum: 100
-          step: 5
-          integer: true
-          value: root.overlayOpacityPercent
-          onMoved: function(v) {
-            root.overlayOpacityPercent = Math.round(v)
+          height: opacitySlider.implicitHeight
+
+          PanelSlider {
+            id: opacitySlider
+            anchors.fill: parent
+            minimum: 20
+            maximum: 100
+            step: 5
+            integer: true
+            value: root.overlayOpacityPercent
+            onMoved: function(v) {
+              root.overlayOpacityPercent = Math.round(v)
+            }
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: function(wheel) {
+              scrollArea.contentY = Math.max(0, Math.min(scrollArea.contentHeight - scrollArea.height, scrollArea.contentY - wheel.angleDelta.y))
+            }
           }
         }
 

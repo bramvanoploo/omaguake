@@ -12,7 +12,7 @@ QtObject {
   readonly property string conflictCheckerScript: pluginDir + "/scripts/conflict-checker.py"
   readonly property string ptyBridgeScript: pluginDir + "/scripts/pty-bridge.py"
 
-  property int heightPercent: 45
+  property int heightPercent: 50
   property int overlayOpacityPercent: 90
   property string tabsPosition: "bottom"
   property string keybinding: ""
@@ -55,7 +55,7 @@ QtObject {
     }
     try {
       var data = JSON.parse(raw)
-      if (data.heightPercent !== undefined) heightPercent = parseInt(data.heightPercent, 10) || 45
+      if (data.heightPercent !== undefined) heightPercent = parseInt(data.heightPercent, 10) || 50
       if (data.overlayOpacityPercent !== undefined) overlayOpacityPercent = parseInt(data.overlayOpacityPercent, 10) || 90
       if (data.tabsPosition !== undefined) tabsPosition = data.tabsPosition === "top" ? "top" : "bottom"
       if (data.keybinding !== undefined) keybinding = String(data.keybinding)
@@ -69,7 +69,7 @@ QtObject {
   }
 
   function applyDefaults() {
-    heightPercent = 45
+    heightPercent = 50
     overlayOpacityPercent = 90
     tabsPosition = "bottom"
     keybinding = ""
