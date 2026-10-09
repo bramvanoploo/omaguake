@@ -304,7 +304,7 @@ Item {
       width: parent.width
       height: parent.height
       y: (root.slideProgress - 1.0) * parent.height
-      opacity: Math.max(0.1, root.slideProgress)
+      opacity: Math.max(0.01, root.slideProgress) * container.cardOpacity
 
       readonly property real cardOpacity: {
         if (config && config.overlayOpacityPercent !== undefined) {
@@ -321,7 +321,7 @@ Item {
       Rectangle {
         id: bgCard
         anchors.fill: parent
-        color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, container.cardOpacity)
+        color: Color.background
         border.color: Color.menu.border
         border.width: 1
         radius: Style.cornerRadius

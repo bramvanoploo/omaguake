@@ -27,7 +27,10 @@ Item {
   QMLTermWidget {
     id: terminal
     anchors.fill: parent
-    anchors.margins: 4
+    anchors.leftMargin: 16
+    anchors.rightMargin: 16
+    anchors.topMargin: 12
+    anchors.bottomMargin: 10
     focus: root.activeTab
 
     colorScheme: root.schemeName
@@ -67,8 +70,6 @@ Item {
     }
 
     Component.onCompleted: {
-      console.log("[Omaguake Debug] availableColorSchemes:", JSON.stringify(terminal.availableColorSchemes))
-      console.log("[Omaguake Debug] active colorScheme:", terminal.colorScheme)
       termSession.startShellProgram()
       if (root.activeTab) {
         terminal.forceActiveFocus()

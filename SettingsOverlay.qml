@@ -42,7 +42,7 @@ PopupCard {
   property string customGestureConflictMessage: ""
 
   padding: Style.space(20)
-  contentWidth: fittedContentWidth(Style.space(560))
+  contentWidth: fittedContentWidth(Style.space(490))
   contentHeight: fittedContentHeight(contentCol.implicitHeight)
 
   onOpenChanged: {
@@ -232,7 +232,7 @@ PopupCard {
     Column {
       id: contentCol
       width: scrollArea.width
-      spacing: Style.space(18)
+      spacing: Style.space(10)
 
     // Header
     Row {
@@ -276,7 +276,7 @@ PopupCard {
     // 1. Overlay Height Setting
     Column {
       width: parent.width
-      spacing: Style.space(8)
+      spacing: Style.space(5)
 
       Row {
         width: parent.width
@@ -348,10 +348,10 @@ PopupCard {
     // 2. Overlay Opacity Setting
     Column {
       width: parent.width
-      spacing: Style.space(8)
+      spacing: Style.space(5)
 
       Column {
-        spacing: Style.space(2)
+        spacing: Style.space(1)
         Text {
           text: "Overlay Opacity: " + root.overlayOpacityPercent + "%"
           font.family: Style.font.family
@@ -426,10 +426,10 @@ PopupCard {
     // 3. Tab Bar Position
     Column {
       width: parent.width
-      spacing: Style.space(8)
+      spacing: Style.space(5)
 
       Column {
-        spacing: Style.space(2)
+        spacing: Style.space(1)
         Text {
           text: "Tab Bar Position"
           font.family: Style.font.family
@@ -469,10 +469,10 @@ PopupCard {
     // 4. Global Keybinding (Not applied by default, offers suggested & custom recording)
     Column {
       width: parent.width
-      spacing: Style.space(8)
+      spacing: Style.space(5)
 
       Column {
-        spacing: Style.space(2)
+        spacing: Style.space(1)
         Text {
           text: "Global Shortcut Keybinding"
           font.family: Style.font.family
@@ -572,10 +572,10 @@ PopupCard {
     // 5. Trackpad Gestures (Not applied by default, offers suggested & custom)
     Column {
       width: parent.width
-      spacing: Style.space(8)
+      spacing: Style.space(5)
 
       Column {
-        spacing: Style.space(2)
+        spacing: Style.space(1)
         Text {
           text: "Trackpad Gestures"
           font.family: Style.font.family
@@ -677,7 +677,7 @@ PopupCard {
         anchors.right: autoHideToggle.left
         anchors.rightMargin: Style.spacing.sm
         anchors.verticalCenter: parent.verticalCenter
-        spacing: Style.space(2)
+        spacing: Style.space(1)
 
         Text {
           text: "Auto-hide on Focus Loss"
