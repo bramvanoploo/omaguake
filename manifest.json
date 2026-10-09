@@ -22,7 +22,7 @@
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "heightPercent": 50,
+      "heightPercent": 45,
       "tabsPosition": "bottom",
       "keybinding": "CTRL + SPACE",
       "gesturesEnabled": true,

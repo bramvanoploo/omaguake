@@ -12,11 +12,36 @@ QtObject {
   readonly property string conflictCheckerScript: pluginDir + "/scripts/conflict-checker.py"
   readonly property string ptyBridgeScript: pluginDir + "/scripts/pty-bridge.py"
 
-  property int heightPercent: 50
+  property int heightPercent: 45
   property string tabsPosition: "bottom"
   property string keybinding: "CTRL + SPACE"
   property bool gesturesEnabled: true
   property bool autoHideOnFocusLoss: true
+
+  // System theme opacity tracking (from omasettings.json)
+  property real systemActiveOpacity: 0.88
+
+  function loadOmaSettings(raw) {
+    if (!raw) return
+    try {
+      var d = JSON.parse(raw)
+      if (d.hypr && d.hypr["active-opacity"] !== undefined) {
+        var op = parseFloat(d.hypr["active-opacity"])
+        if (op > 0 && op <= 1.0) {
+          systemActiveOpacity = op
+        }
+      }
+    } catch (e) {}
+  }
+
+  property var _omaSettingsFile: FileView {
+    id: omaSettingsFile
+    path: root.homeDir + "/.config/omarchy/omasettings.json"
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.loadOmaSettings(text())
+    onFileChanged: reload()
+  }
 
   signal settingsLoaded()
   signal settingsChanged()
@@ -28,7 +53,7 @@ QtObject {
     }
     try {
       var data = JSON.parse(raw)
-      if (data.heightPercent !== undefined) heightPercent = parseInt(data.heightPercent, 10) || 50
+      if (data.heightPercent !== undefined) heightPercent = parseInt(data.heightPercent, 10) || 45
       if (data.tabsPosition !== undefined) tabsPosition = data.tabsPosition === "top" ? "top" : "bottom"
       if (data.keybinding !== undefined) keybinding = String(data.keybinding)
       if (data.gesturesEnabled !== undefined) gesturesEnabled = data.gesturesEnabled === true
@@ -40,7 +65,7 @@ QtObject {
   }
 
   function applyDefaults() {
-    heightPercent = 50
+    heightPercent = 45
     tabsPosition = "bottom"
     keybinding = "CTRL + SPACE"
     gesturesEnabled = true

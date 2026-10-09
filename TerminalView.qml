@@ -17,7 +17,7 @@ Item {
   property bool activeTab: false
 
   // Palette from Omarchy themes
-  property color termBackground: Color.menu.background
+  property color termBackground: "transparent"
   property color termForeground: Color.foreground
   property string termFontFamily: "monospace"
   property int termFontSize: 13

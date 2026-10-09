@@ -11,7 +11,7 @@ PopupCard {
   property var configManager: null
   property string currentKeybinding: "CTRL + SPACE"
   property string candidateKeybinding: "CTRL + SPACE"
-  property int panelHeightPercent: 50
+  property int panelHeightPercent: 45
   property string tabsPosition: "bottom"
   property bool gesturesEnabled: true
   property bool autoHideOnFocusLoss: true
@@ -213,7 +213,7 @@ PopupCard {
           id: presetRow
           spacing: 4
           Repeater {
-            model: [30, 50, 75, 100]
+            model: [30, 45, 60, 75, 100]
             delegate: Button {
               text: modelData + "%"
               fontSize: Style.font.caption

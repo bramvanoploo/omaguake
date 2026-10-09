@@ -58,6 +58,23 @@ def check_key_conflict(candidate_chord):
             "message": "Invalid keybinding string."
         }
     
+    # Check if this chord is already our own binding in bindings.lua
+    current_own_chord = None
+    if BINDINGS_LUA.exists():
+        try:
+            content = BINDINGS_LUA.read_text(encoding="utf-8")
+            m_own = re.search(r"-- BEGIN bramvanoploo\.omaguake.*?hl\.bind\(\s*[\"']([^\"']+)[\"'].*?-- END bramvanoploo\.omaguake", content, flags=re.DOTALL)
+            if m_own:
+                current_own_chord, _, _ = normalize_key_chord(m_own.group(1))
+        except Exception:
+            pass
+            
+    if current_own_chord and norm == current_own_chord:
+        return {
+            "conflict": False,
+            "message": f"Keybinding '{norm}' is currently assigned to Omaguake."
+        }
+
     binds = get_hyprctl_binds()
     for b in binds:
         # Ignore bindings created by bramvanoploo.omaguake itself
@@ -174,6 +191,7 @@ def apply_configuration(keychord, enable_gestures):
     block_lines = [
         "",
         "-- BEGIN bramvanoploo.omaguake",
+        'hl.layer_rule({ match = { namespace = "omaguake" }, blur = true, no_anim = true, animation = "none" })',
         f'hl.bind("{norm_chord}", hl.dsp.global("bramvanoploo.omaguake:toggle"))',
     ]
     if enable_gestures:

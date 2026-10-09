@@ -133,7 +133,7 @@ Item {
     onPressed: root.hide()
   }
 
-  // Shell IPC Target
+  // Shell IPC Targets
   IpcHandler {
     target: "omaguake"
     function toggle(): void { root.toggle() }
@@ -143,11 +143,47 @@ Item {
     function close(): void { root.hide() }
   }
 
+  IpcHandler {
+    target: "bramvanoploo.omaguake"
+    function toggle(): void { root.toggle() }
+    function show(): void { root.show() }
+    function hide(): void { root.hide() }
+    function open(): void { root.show() }
+    function close(): void { root.hide() }
+  }
+
+  property bool focusPrimed: false
+
+  onOpenedChanged: {
+    if (opened) {
+      focusPrimed = false
+      focusPrimeTimer.restart()
+    } else {
+      focusPrimeTimer.stop()
+      focusPrimed = false
+    }
+  }
+
+  Timer {
+    id: focusPrimeTimer
+    interval: 75
+    repeat: false
+    onTriggered: {
+      if (root.opened) {
+        root.focusPrimed = true
+      }
+    }
+  }
+
   PanelWindow {
     id: panelWindow
     visible: root.slideProgress > 0.001 || root.opened
     anchors { top: true; left: true; right: true }
+    margins {
+      top: Style.bar.sizeHorizontal
+    }
     color: "transparent"
+    surfaceFormat.opaque: false
 
     readonly property real screenW: screen ? screen.width : 1920
     readonly property real screenH: screen ? screen.height : 1080
@@ -156,15 +192,26 @@ Item {
     implicitHeight: panelH
     implicitWidth: screenW
 
+    mask: Region {
+      x: 0
+      y: 0
+      width: panelWindow.width
+      height: Math.max(0, Math.round(panelWindow.panelH * root.slideProgress))
+    }
+
     WlrLayershell.namespace: "omaguake"
-    WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: root.opened ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.keyboardFocus: root.opened
+      ? (root.focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
+      : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
 
     // Automatically hide on focus loss
     HyprlandFocusGrab {
-      active: root.opened && root.slideProgress >= 0.95 && config.autoHideOnFocusLoss
-      windows: [panelWindow]
+      active: root.opened && root.focusPrimed && config.autoHideOnFocusLoss
+      windows: (settingsLoader.item && settingsLoader.item.open)
+        ? [panelWindow, settingsLoader.item]
+        : [panelWindow]
       onCleared: {
         if (root.opened && config.autoHideOnFocusLoss) {
           root.hide()
@@ -180,11 +227,19 @@ Item {
       y: (root.slideProgress - 1.0) * parent.height
       opacity: Math.max(0.1, root.slideProgress)
 
+      readonly property real cardOpacity: {
+        var op = config.systemActiveOpacity
+        if (op > 0 && op < 1.0) {
+          return op >= 0.98 ? 0.90 : op
+        }
+        return 0.88
+      }
+
       // Main Background Card
       Rectangle {
         id: bgCard
         anchors.fill: parent
-        color: Color.menu.background
+        color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, container.cardOpacity)
         border.color: Color.menu.border
         border.width: 1
         radius: Style.cornerRadius
@@ -234,7 +289,7 @@ Item {
         anchors.top: config.tabsPosition === "top" ? parent.top : undefined
         anchors.bottom: config.tabsPosition === "bottom" ? parent.bottom : undefined
         height: 38
-        color: Qt.darker(Color.menu.background, 1.15)
+        color: Qt.rgba(Color.background.r * 0.75, Color.background.g * 0.75, Color.background.b * 0.75, Math.min(0.96, container.cardOpacity + 0.05))
         border.color: Color.menu.border
         border.width: 1
 
@@ -275,7 +330,7 @@ Item {
                 width: tabLabel.implicitWidth + (closeBtn.visible ? 28 : 12) + 16
                 height: 30
                 radius: Style.cornerRadius > 0 ? 4 : 0
-                color: isActive ? Color.menu.background : "transparent"
+                color: isActive ? Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.85) : "transparent"
                 border.color: isActive ? Color.accent : (tabHover.containsMouse ? Color.menu.border : "transparent")
                 border.width: 1
 
