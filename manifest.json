@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "bramvanoploo.omaguake",
   "name": "Omaguake",
-  "version": "1.0.0",
+  "version": "0.5.0",
   "author": "Bram van Oploo",
   "license": "MIT",
   "description": "Quake/Yakuake-style drop-down terminal with tabs, gesture controls, and conflict-checked configuration for Omarchy",
