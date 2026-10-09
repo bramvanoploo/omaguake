@@ -17,7 +17,7 @@ import sys
 HOME = pathlib.Path.home()
 THEME_DIR = HOME / ".local/state/omarchy/current/theme"
 THEME_NAME_FILE = HOME / ".local/state/omarchy/current/theme.name"
-PROJECT_DIR = pathlib.Path("/home/bram/Projects/omaguake")
+PROJECT_DIR = pathlib.Path(__file__).resolve().parent.parent
 SCHEMES_DIR = PROJECT_DIR / "QMLTermWidget" / "color-schemes"
 SETTINGS_FILE = HOME / ".config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
 LOCAL_SETTINGS = PROJECT_DIR / "settings.json"

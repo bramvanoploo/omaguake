@@ -74,7 +74,7 @@ Item {
 
     session: QMLTermSession {
       id: termSession
-      initialWorkingDirectory: Quickshell.env("HOME") || "/home/bram"
+      initialWorkingDirectory: Quickshell.env("HOME") || "."
 
       onTitleChanged: function() {
         if (termSession.title && termSession.title !== root.currentTitle) {

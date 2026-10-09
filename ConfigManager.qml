@@ -7,10 +7,9 @@ QtObject {
   id: root
 
   property string pluginDir: ""
-  readonly property string homeDir: Quickshell.env("HOME") || "/home/bram"
-  readonly property string configPath: homeDir + "/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
+  readonly property string homeDir: Quickshell.env("HOME") || ""
+  readonly property string configPath: (homeDir ? homeDir : "~") + "/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
   readonly property string conflictCheckerScript: pluginDir + "/scripts/conflict-checker.py"
-  readonly property string ptyBridgeScript: pluginDir + "/scripts/pty-bridge.py"
 
   property int heightPercent: 50
   property int overlayOpacityPercent: 90

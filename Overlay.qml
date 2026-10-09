@@ -167,16 +167,21 @@ Item {
     for (var i = 0; i < tabs.length; i++) {
       if (tabs[i].id === targetId) {
         var tab = tabs[i]
-        var shortTitle = newTitle
+        var shortTitle = String(newTitle || "").trim()
         if (shortTitle.indexOf(":") !== -1) {
           var parts = shortTitle.split(":")
           shortTitle = parts[parts.length - 1].trim()
-        } else {
-          shortTitle = shortTitle.trim()
+        }
+        var home = Quickshell.env("HOME") || ""
+        if (home && shortTitle.indexOf(home) === 0) {
+          shortTitle = "~" + shortTitle.slice(home.length)
         }
         var cwd = shortTitle || "~"
         var lastCmd = tab.lastCommand || ""
         var displayTitle = tab.id + ": " + cwd + (lastCmd ? " " + lastCmd : "")
+        if (tab.title === displayTitle && tab.cwd === cwd) {
+          return
+        }
         var newTabs = tabs.slice()
         newTabs[i] = {
           id: tab.id,
@@ -199,6 +204,9 @@ Item {
         var cwd = tab.cwd || "~"
         var trimmed = String(cmdText || "").trim()
         if (trimmed.length > 0) {
+          if (tab.lastCommand === trimmed) {
+            return
+          }
           var displayTitle = tab.id + ": " + cwd + " " + trimmed
           var newTabs = tabs.slice()
           newTabs[i] = {
@@ -258,6 +266,12 @@ Item {
     onPressed: root.hide()
   }
 
+  function selectTab(index) {
+    if (index >= 0 && index < root.tabs.length) {
+      root.currentTabIndex = index
+    }
+  }
+
   // Shell IPC Targets
   IpcHandler {
     target: "omaguake"
@@ -267,7 +281,8 @@ Item {
     function open(): void { root.show() }
     function close(): void { root.hide() }
     function newTab(): void { root.createTab() }
-    function selectTab(index: int): void { root.currentTabIndex = index }
+    function closeTab(index: int): void { root.closeTab(index) }
+    function selectTab(index: int): void { root.selectTab(index) }
     function retheme(): void { root.reloadTheme() }
   }
 
@@ -279,7 +294,8 @@ Item {
     function open(): void { root.show() }
     function close(): void { root.hide() }
     function newTab(): void { root.createTab() }
-    function selectTab(index: int): void { root.currentTabIndex = index }
+    function closeTab(index: int): void { root.closeTab(index) }
+    function selectTab(index: int): void { root.selectTab(index) }
     function retheme(): void { root.reloadTheme() }
   }
 
@@ -593,6 +609,16 @@ Item {
           anchors.rightMargin: 8
           anchors.verticalCenter: parent.verticalCenter
           spacing: 6
+
+          // Settings button
+          Button {
+            text: "⚙"
+            tooltipText: "Omaguake Settings"
+            fontSize: Style.font.caption
+            onClicked: {
+              Quickshell.execDetached(["omarchy-shell", "omaguake.bar", "openSettings"])
+            }
+          }
 
           // Slide Up / Minimize button
           Button {

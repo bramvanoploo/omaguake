@@ -6,7 +6,7 @@ import json
 import subprocess
 from pathlib import Path
 
-HOME = Path(os.environ.get("HOME", "/home/bram"))
+HOME = Path(os.environ.get("HOME", str(Path.home())))
 HYPR_DIR = HOME / ".config" / "hypr"
 BINDINGS_LUA = HYPR_DIR / "bindings.lua"
 
