@@ -288,8 +288,8 @@ def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_con
         
     if enable_gestures:
         block_lines.append(f'-- Omaguake Gestures: {gesture_fingers}-finger swipe down to show, swipe up to hide')
-        block_lines.append(f'hl.gesture({{ fingers = {gesture_fingers}, direction = "down", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:show")) end }})')
-        block_lines.append(f'hl.gesture({{ fingers = {gesture_fingers}, direction = "up", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:hide")) end }})')
+        block_lines.append(f'hl.gesture({{ fingers = {gesture_fingers}, direction = "down", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:show")) end, disable_inhibit = true }})')
+        block_lines.append(f'hl.gesture({{ fingers = {gesture_fingers}, direction = "up", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:hide")) end, disable_inhibit = true }})')
         
     block_lines.append("-- END bramvanoploo.omaguake")
     block_lines.append("")

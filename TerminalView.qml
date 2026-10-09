@@ -276,26 +276,42 @@ Item {
       root.schemeName = newScheme
     }
     if (terminal) {
-      terminal.colorScheme = root.schemeName
+      if (typeof terminal.setBackgroundColor === "function" && Color.background) {
+        terminal.setBackgroundColor(Color.background)
+      }
+      if (typeof terminal.setForegroundColor === "function" && Color.foreground) {
+        terminal.setForegroundColor(Color.foreground)
+      }
+      if (root.schemeName && root.schemeName.length > 0) {
+        terminal.colorScheme = ""
+        terminal.colorScheme = root.schemeName
+      }
+      root.refreshTerminal()
     }
   }
 
   Connections {
     target: Color
     function onBackgroundChanged() {
+      if (terminal && typeof terminal.setBackgroundColor === "function" && Color.background) {
+        terminal.setBackgroundColor(Color.background)
+      }
       recolorTimer.restart()
     }
     function onForegroundChanged() {
+      if (terminal && typeof terminal.setForegroundColor === "function" && Color.foreground) {
+        terminal.setForegroundColor(Color.foreground)
+      }
       recolorTimer.restart()
     }
   }
 
   Timer {
     id: recolorTimer
-    interval: 80
+    interval: 50
     repeat: false
     onTriggered: {
-      root.reloadColorScheme()
+      root.reloadColorScheme(root.schemeName)
     }
   }
 

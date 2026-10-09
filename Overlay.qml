@@ -48,6 +48,60 @@ Item {
     onFileChanged: reload()
   }
 
+  // Watch Omarchy theme state files directly
+  FileView {
+    id: omarchyThemeNameFile
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme.name"
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.reloadTheme()
+    onFileChanged: {
+      reload()
+      root.reloadTheme()
+    }
+  }
+
+  FileView {
+    id: omarchyColorsFile
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.reloadTheme()
+    onFileChanged: {
+      reload()
+      root.reloadTheme()
+    }
+  }
+
+  // Active inotifywait process monitoring Omarchy current directory across directory swaps
+  Process {
+    id: omarchyThemeWatcher
+    command: [
+      "inotifywait",
+      "-m",
+      "-q",
+      "-e", "close_write,moved_to",
+      "--format", "%f",
+      Quickshell.env("HOME") + "/.local/state/omarchy/current"
+    ]
+    running: true
+    stdout: SplitParser {
+      onRead: function(line) {
+        var f = String(line || "").trim()
+        if (f === "theme.name" || f === "theme" || f === "background" || f.indexOf("colors") !== -1) {
+          root.reloadTheme()
+        }
+      }
+    }
+    onExited: function(exitCode, exitStatus) {
+      Qt.callLater(function() {
+        if (!omarchyThemeWatcher.running) {
+          omarchyThemeWatcher.running = true
+        }
+      })
+    }
+  }
+
   FileView {
     id: clipboardBindsFile
     path: root.pluginDir + "/clipboard_binds.json"
@@ -400,11 +454,17 @@ Item {
         var name = String(text || "").trim()
         if (name.length > 0) {
           root.currentSchemeName = name
+          root.notifyTabsRetheme()
         }
       }
     }
     onExited: function(exitCode, exitStatus) {
+      currentSchemeFile.reload()
       root.notifyTabsRetheme()
+      if (root.themeReloadQueued) {
+        root.themeReloadQueued = false
+        Qt.callLater(function() { root.reloadTheme() })
+      }
     }
   }
 
@@ -444,11 +504,16 @@ Item {
     }
   }
 
+  property bool themeReloadQueued: false
+
   function reloadTheme() {
-    if (!themeSyncProc.running) {
-      themeSyncProc.command = [root.pluginDir + "/scripts/sync-theme.py"]
-      themeSyncProc.running = true
+    if (themeSyncProc.running) {
+      themeReloadQueued = true
+      return
     }
+    themeReloadQueued = false
+    themeSyncProc.command = [root.pluginDir + "/scripts/sync-theme.py"]
+    themeSyncProc.running = true
   }
 
   function notifyTabsRetheme() {
@@ -494,6 +559,7 @@ Item {
 
   onOpenedChanged: {
     if (opened) {
+      root.reloadTheme()
       focusPrimed = false
       focusPrimeTimer.restart()
     } else {
