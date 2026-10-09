@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "bramvanoploo.omaguake",
+  "name": "Omaguake",
+  "version": "1.0.0",
+  "author": "Bram van Oploo",
+  "license": "MIT",
+  "description": "Quake/Yakuake-style drop-down terminal with tabs, gesture controls, and conflict-checked configuration for Omarchy",
+  "kinds": [
+    "bar-widget",
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "overlay": "Overlay.qml"
+  },
+  "barWidget": {
+    "displayName": "Omaguake",
+    "description": "Quake-style drop-down terminal with tabs and trackpad gestures",
+    "category": "Utilities",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "heightPercent": 50,
+      "tabsPosition": "bottom",
+      "keybinding": "CTRL + SPACE",
+      "gesturesEnabled": true,
+      "autoHideOnFocusLoss": true
+    },
+    "schema": [
+      {
+        "key": "heightPercent",
+        "type": "number",
+        "label": "Height percentage",
+        "description": "Height of the drop-down terminal overlay (20-100%)."
+      },
+      {
+        "key": "tabsPosition",
+        "type": "string",
+        "label": "Tabs position",
+        "description": "Position of the tabs bar ('bottom' for Guake style, 'top' for Yakuake style)."
+      },
+      {
+        "key": "keybinding",
+        "type": "string",
+        "label": "Toggle keybinding",
+        "description": "Global shortcut chord to summon and hide the dropdown terminal."
+      },
+      {
+        "key": "gesturesEnabled",
+        "type": "boolean",
+        "label": "Trackpad gestures",
+        "description": "Enable 3-finger swipe down to show and swipe up to hide."
+      },
+      {
+        "key": "autoHideOnFocusLoss",
+        "type": "boolean",
+        "label": "Auto-hide on focus loss",
+        "description": "Automatically slide up and hide when focus is lost."
+      }
+    ]
+  }
+}
