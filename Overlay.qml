@@ -141,6 +141,7 @@ Item {
     function hide(): void { root.hide() }
     function open(): void { root.show() }
     function close(): void { root.hide() }
+    function retheme(): void { root.reloadTheme() }
   }
 
   IpcHandler {
@@ -150,6 +151,53 @@ Item {
     function hide(): void { root.hide() }
     function open(): void { root.show() }
     function close(): void { root.hide() }
+    function retheme(): void { root.reloadTheme() }
+  }
+
+  Process {
+    id: themeSyncProc
+    command: [root.pluginDir + "/scripts/sync-theme.py"]
+    onExited: function(exitCode, exitStatus) {
+      root.notifyTabsRetheme()
+    }
+  }
+
+  function reloadTheme() {
+    if (!themeSyncProc.running) {
+      themeSyncProc.command = [root.pluginDir + "/scripts/sync-theme.py"]
+      themeSyncProc.running = true
+    }
+  }
+
+  function notifyTabsRetheme() {
+    if (terminalRepeater) {
+      for (var i = 0; i < terminalRepeater.count; i++) {
+        var item = terminalRepeater.itemAt(i)
+        if (item && typeof item.reloadColorScheme === "function") {
+          item.reloadColorScheme()
+        }
+      }
+    }
+  }
+
+  Connections {
+    target: Color
+    function onBackgroundChanged() { root.reloadTheme() }
+    function onForegroundChanged() { root.reloadTheme() }
+  }
+
+  Connections {
+    target: config
+    function onOverlayOpacityPercentChanged() {
+      if (!themeSyncProc.running) {
+        themeSyncProc.command = [
+          root.pluginDir + "/scripts/sync-theme.py",
+          "--opacity-percent",
+          String(config.overlayOpacityPercent)
+        ]
+        themeSyncProc.running = true
+      }
+    }
   }
 
   property bool focusPrimed: false
@@ -264,6 +312,7 @@ Item {
         clip: true
 
         Repeater {
+          id: terminalRepeater
           model: root.tabs.length
           delegate: TerminalView {
             anchors.fill: parent

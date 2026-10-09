@@ -23,8 +23,10 @@ Item {
     focus: root.activeTab
 
     colorScheme: "Omaguake"
-    font.family: "monospace"
-    font.pointSize: 11
+    font.family: (Style.resolvedFontFamily && Style.resolvedFontFamily !== "monospace")
+      ? Style.resolvedFontFamily
+      : "JetBrainsMono Nerd Font"
+    font.pointSize: 10
 
     session: QMLTermSession {
       id: termSession
@@ -64,6 +66,31 @@ Item {
     }
   }
 
+  function reloadColorScheme() {
+    var cs = terminal.colorScheme
+    terminal.colorScheme = ""
+    terminal.colorScheme = cs || "Omaguake"
+  }
+
+  Connections {
+    target: Color
+    function onBackgroundChanged() {
+      recolorTimer.restart()
+    }
+    function onForegroundChanged() {
+      recolorTimer.restart()
+    }
+  }
+
+  Timer {
+    id: recolorTimer
+    interval: 80
+    repeat: false
+    onTriggered: {
+      root.reloadColorScheme()
+    }
+  }
+
   onActiveTabChanged: {
     if (activeTab) {
       Qt.callLater(function() {
@@ -72,3 +99,4 @@ Item {
     }
   }
 }
+
