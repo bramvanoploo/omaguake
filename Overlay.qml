@@ -405,7 +405,7 @@ Item {
               delegate: Rectangle {
                 id: tabItem
                 readonly property bool isActive: index === root.currentTabIndex
-                width: tabLabel.implicitWidth + (closeBtn.visible ? 28 : 12) + 16
+                width: Math.max(Style.space(120), tabLabel.implicitWidth + (closeBtn.visible ? 28 : 12) + 20)
                 height: 30
                 radius: Style.cornerRadius > 0 ? 4 : 0
                 color: isActive ? Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.85) : "transparent"
@@ -421,45 +421,45 @@ Item {
                   }
                 }
 
-                Row {
-                  anchors.verticalCenter: parent.verticalCenter
+                Text {
+                  id: tabLabel
                   anchors.left: parent.left
-                  anchors.leftMargin: 8
-                  spacing: 6
+                  anchors.leftMargin: 10
+                  anchors.right: closeBtn.visible ? closeBtn.left : parent.right
+                  anchors.rightMargin: 6
+                  anchors.verticalCenter: parent.verticalCenter
+                  text: modelData.title
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.bodySmall
+                  font.bold: tabItem.isActive
+                  color: tabItem.isActive ? Color.foreground : Color.muted
+                  elide: Text.ElideRight
+                }
+
+                // Close button on tab
+                Rectangle {
+                  id: closeBtn
+                  visible: root.tabs.length > 1 && (tabItem.isActive || tabHover.containsMouse)
+                  anchors.right: parent.right
+                  anchors.rightMargin: 8
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: 16
+                  height: 16
+                  radius: 8
+                  color: closeHover.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : "transparent"
 
                   Text {
-                    id: tabLabel
-                    text: modelData.title
-                    font.family: Style.font.family
-                    font.pixelSize: Style.font.bodySmall
-                    font.bold: tabItem.isActive
-                    color: tabItem.isActive ? Color.foreground : Color.muted
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.centerIn: parent
+                    text: "×"
+                    font.pixelSize: 13
+                    color: closeHover.containsMouse ? Color.urgent : Color.muted
                   }
 
-                  // Close button on tab
-                  Rectangle {
-                    id: closeBtn
-                    visible: root.tabs.length > 1 && (tabItem.isActive || tabHover.containsMouse)
-                    width: 16
-                    height: 16
-                    radius: 8
-                    color: closeHover.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : "transparent"
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Text {
-                      anchors.centerIn: parent
-                      text: "×"
-                      font.pixelSize: 13
-                      color: closeHover.containsMouse ? Color.urgent : Color.muted
-                    }
-
-                    MouseArea {
-                      id: closeHover
-                      anchors.fill: parent
-                      hoverEnabled: true
-                      onClicked: root.closeTab(index)
-                    }
+                  MouseArea {
+                    id: closeHover
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: root.closeTab(index)
                   }
                 }
               }
