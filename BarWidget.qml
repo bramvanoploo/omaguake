@@ -8,7 +8,7 @@ BarWidget {
   id: root
   moduleName: "bramvanoploo.omaguake"
 
-  readonly property string pluginDir: Qt.resolvedUrl(".").replace("file://", "").replace(/\/$/, "")
+  readonly property string pluginDir: String(Qt.resolvedUrl(".")).replace("file://", "").replace(/\/$/, "")
 
   ConfigManager {
     id: config
@@ -23,30 +23,37 @@ BarWidget {
   }
 
   function toggleSettings() {
-    if (settingsLoader.item) {
+    if (!settingsLoader.active) {
+      settingsLoader.active = true
+    } else if (settingsLoader.item) {
       settingsLoader.item.open = !settingsLoader.item.open
     }
   }
 
+  function injectSettings() {
+    if (settingsLoader.item) {
+      settingsLoader.item.bar = root.bar
+      settingsLoader.item.anchorItem = button
+      settingsLoader.item.configManager = config
+      settingsLoader.item.open = true
+    }
+  }
+
+  onBarChanged: if (settingsLoader.item) settingsLoader.item.bar = root.bar
+
   Loader {
     id: settingsLoader
-    active: true
-    sourceComponent: Component {
-      SettingsOverlay {
-        bar: root.bar
-        anchorItem: button
-        configManager: config
-      }
-    }
+    active: false
+    source: Qt.resolvedUrl("SettingsOverlay.qml")
+    onLoaded: root.injectSettings()
   }
 
   BarIconButton {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: ""
-    fontFamily: Style.font.family
-    horizontalMargin: 6
+    text: "\uf120"
+    slotSize: Style.bar.iconSlot
     tooltipText: "Omaguake Dropdown Terminal (" + config.keybinding + ")\nLeft-click: Toggle · Right-click: Settings"
 
     onPressed: function(btn) {

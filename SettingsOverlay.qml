@@ -84,53 +84,59 @@ PopupCard {
     root.close()
   }
 
-  Process {
-    id: keyCheckProc
-    stdout: StdioCollector {
-      onStreamFinished: {
-        root.isCheckingKey = false
-        try {
-          var res = JSON.parse(text)
-          root.keyConflict = res.conflict === true
-          root.keyConflictMessage = res.message || ""
-        } catch (e) {
-          root.keyConflict = false
-          root.keyConflictMessage = ""
-        }
-      }
-    }
-  }
-
-  Process {
-    id: gestureCheckProc
-    stdout: StdioCollector {
-      onStreamFinished: {
-        root.isCheckingGesture = false
-        try {
-          var res = JSON.parse(text)
-          root.gestureConflict = res.conflict === true
-          root.gestureConflictMessage = res.message || ""
-        } catch (e) {
-          root.gestureConflict = false
-          root.gestureConflictMessage = ""
-        }
-      }
-    }
-  }
-
-  Process {
-    id: applyProc
-    stdout: StdioCollector {
-      onStreamFinished: {
-        console.log("Omaguake settings applied:", text)
-      }
-    }
-  }
-
   Column {
     id: contentCol
     width: parent.width
     spacing: Style.spacing.md
+
+    Item {
+      visible: false
+      width: 0
+      height: 0
+
+      Process {
+        id: keyCheckProc
+        stdout: StdioCollector {
+          onStreamFinished: {
+            root.isCheckingKey = false
+            try {
+              var res = JSON.parse(text)
+              root.keyConflict = res.conflict === true
+              root.keyConflictMessage = res.message || ""
+            } catch (e) {
+              root.keyConflict = false
+              root.keyConflictMessage = ""
+            }
+          }
+        }
+      }
+
+      Process {
+        id: gestureCheckProc
+        stdout: StdioCollector {
+          onStreamFinished: {
+            root.isCheckingGesture = false
+            try {
+              var res = JSON.parse(text)
+              root.gestureConflict = res.conflict === true
+              root.gestureConflictMessage = res.message || ""
+            } catch (e) {
+              root.gestureConflict = false
+              root.gestureConflictMessage = ""
+            }
+          }
+        }
+      }
+
+      Process {
+        id: applyProc
+        stdout: StdioCollector {
+          onStreamFinished: {
+            console.log("Omaguake settings applied:", text)
+          }
+        }
+      }
+    }
 
     // Header
     Row {
@@ -332,18 +338,20 @@ PopupCard {
       width: parent.width
       spacing: Style.spacing.xs
 
-      Row {
+      Item {
         width: parent.width
+        height: Math.max(gestureTitle.implicitHeight, gestureToggle.implicitHeight)
+
         Text {
+          id: gestureTitle
           text: "Trackpad Gestures"
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
+          anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
         }
-
-        Item { width: 1; height: 1; Layout.fillWidth: true }
 
         ToggleSwitch {
           id: gestureToggle
@@ -403,11 +411,17 @@ PopupCard {
       }
     }
 
-    // Auto-hide on focus loss
-    Row {
+    Item {
       width: parent.width
+      height: Math.max(autoHideCol.implicitHeight, autoHideToggle.implicitHeight)
+
       Column {
-        width: parent.width - autoHideToggle.width - Style.spacing.sm
+        id: autoHideCol
+        anchors.left: parent.left
+        anchors.right: autoHideToggle.left
+        anchors.rightMargin: Style.spacing.sm
+        anchors.verticalCenter: parent.verticalCenter
+
         Text {
           text: "Auto-hide on Focus Loss"
           font.family: Style.font.family

@@ -12,7 +12,7 @@ Item {
   id: root
 
   property string omarchyPath: Quickshell.env("OMARCHY_PATH") || "/usr/share/omarchy"
-  readonly property string pluginDir: Qt.resolvedUrl(".").replace("file://", "").replace(/\/$/, "")
+  readonly property string pluginDir: String(Qt.resolvedUrl(".")).replace("file://", "").replace(/\/$/, "")
 
   property bool opened: false
   property real slideProgress: 0.0
@@ -153,8 +153,8 @@ Item {
     readonly property real screenH: screen ? screen.height : 1080
     readonly property real panelH: Math.round(screenH * (config.heightPercent / 100.0))
 
-    height: panelH
-    width: screenW
+    implicitHeight: panelH
+    implicitWidth: screenW
 
     WlrLayershell.namespace: "omaguake"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -357,9 +357,7 @@ Item {
             text: "⚙"
             tooltipText: "Omaguake Settings"
             fontSize: Style.font.caption
-            onClicked: {
-              settingsLoader.item.open = !settingsLoader.item.open
-            }
+            onClicked: root.openSettings()
           }
 
           // Slide Up / Minimize button
@@ -402,15 +400,25 @@ Item {
     }
   }
 
+  function openSettings() {
+    if (!settingsLoader.active) {
+      settingsLoader.active = true
+    } else if (settingsLoader.item) {
+      settingsLoader.item.open = !settingsLoader.item.open
+    }
+  }
+
   // Settings Overlay Loader
   Loader {
     id: settingsLoader
-    active: true
-    sourceComponent: Component {
-      SettingsOverlay {
-        configManager: config
-        bar: null
-        anchorItem: container
+    active: false
+    source: Qt.resolvedUrl("SettingsOverlay.qml")
+    onLoaded: {
+      if (item) {
+        item.bar = null
+        item.anchorItem = container
+        item.configManager = config
+        item.open = true
       }
     }
   }
