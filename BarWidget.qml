@@ -57,4 +57,11 @@ BarWidget {
     configManager: config
     open: root.settingsOpen
   }
+
+  IpcHandler {
+    target: "omaguake.bar"
+    function toggleSettings(): void { root.toggleSettings() }
+    function openSettings(): void { root.settingsOpen = true }
+    function closeSettings(): void { root.settingsOpen = false }
+  }
 }
