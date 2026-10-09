@@ -15,6 +15,8 @@ BarWidget {
     pluginDir: root.pluginDir
   }
 
+  property bool settingsOpen: false
+
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -23,29 +25,11 @@ BarWidget {
   }
 
   function toggleSettings() {
-    if (!settingsLoader.active) {
-      settingsLoader.active = true
-    } else if (settingsLoader.item) {
-      settingsLoader.item.open = !settingsLoader.item.open
-    }
+    settingsOpen = !settingsOpen
   }
 
-  function injectSettings() {
-    if (settingsLoader.item) {
-      settingsLoader.item.bar = root.bar
-      settingsLoader.item.anchorItem = button
-      settingsLoader.item.configManager = config
-      settingsLoader.item.open = true
-    }
-  }
-
-  onBarChanged: if (settingsLoader.item) settingsLoader.item.bar = root.bar
-
-  Loader {
-    id: settingsLoader
-    active: false
-    source: Qt.resolvedUrl("SettingsOverlay.qml")
-    onLoaded: root.injectSettings()
+  function close() {
+    settingsOpen = false
   }
 
   BarIconButton {
@@ -56,12 +40,21 @@ BarWidget {
     slotSize: Style.bar.iconSlot
     tooltipText: "Omaguake Dropdown Terminal" + (config.keybinding ? " (" + config.keybinding + ")" : "") + "\nLeft-click: Toggle · Right-click: Settings"
 
-    onPressed: function(btn) {
-      if (btn === Qt.RightButton) {
+    onPressed: function(button) {
+      if (button === Qt.RightButton) {
         root.toggleSettings()
-      } else if (btn === Qt.LeftButton) {
+      } else if (button === Qt.LeftButton) {
         root.toggleTerminal()
       }
     }
+  }
+
+  SettingsOverlay {
+    id: settingsPopup
+    anchorItem: root
+    bar: root.bar
+    owner: root
+    configManager: config
+    open: root.settingsOpen
   }
 }

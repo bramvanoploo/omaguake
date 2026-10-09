@@ -41,24 +41,12 @@ PopupCard {
   property bool customGestureConflict: false
   property string customGestureConflictMessage: ""
 
-  anchorItem: null
-  bar: dummyBar
-
-  property QtObject dummyBar: QtObject {
-    property string position: "top"
-    property int barSize: 26
-    property var activePopout: null
-    function requestPopout(k) {}
-    function releasePopout(k) {}
-  }
-
-  padding: Style.space(22)
-  contentWidth: Style.space(560)
-  contentHeight: contentCol.implicitHeight + padding * 2
+  padding: Style.space(20)
+  contentWidth: fittedContentWidth(Style.space(560))
+  contentHeight: fittedContentHeight(contentCol.implicitHeight)
 
   onOpenChanged: {
     if (open) {
-      if (!root.bar) root.bar = dummyBar
       loadCurrentSettings()
       refreshStatus()
     } else {
@@ -71,6 +59,8 @@ PopupCard {
     if (configManager) {
       panelHeightPercent = configManager.heightPercent || 45
       overlayOpacityPercent = configManager.overlayOpacityPercent || 90
+      heightSlider.value = panelHeightPercent
+      opacitySlider.value = overlayOpacityPercent
       tabsPosition = configManager.tabsPosition || "bottom"
       currentKeybinding = configManager.keybinding || ""
       candidateKeybinding = configManager.keybinding || ""
@@ -231,10 +221,18 @@ PopupCard {
     }
   }
 
-  Column {
-    id: contentCol
-    width: parent.width
-    spacing: Style.space(18)
+  Flickable {
+    id: scrollArea
+    anchors.fill: parent
+    contentHeight: contentCol.implicitHeight
+    contentWidth: width
+    clip: true
+    boundsBehavior: Flickable.StopAtBounds
+
+    Column {
+      id: contentCol
+      width: scrollArea.width
+      spacing: Style.space(18)
 
     // Header
     Row {
@@ -302,9 +300,9 @@ PopupCard {
           maximum: 100
           step: 5
           integer: true
-          value: root.panelHeightPercent / 100.0
+          value: root.panelHeightPercent
           onMoved: function(v) {
-            root.panelHeightPercent = Math.round(v * 100)
+            root.panelHeightPercent = Math.round(v)
           }
         }
 
@@ -319,7 +317,7 @@ PopupCard {
               selected: root.panelHeightPercent === modelData
               onClicked: {
                 root.panelHeightPercent = modelData
-                heightSlider.value = modelData / 100.0
+                heightSlider.value = modelData
               }
             }
           }
@@ -366,9 +364,9 @@ PopupCard {
           maximum: 100
           step: 5
           integer: true
-          value: root.overlayOpacityPercent / 100.0
+          value: root.overlayOpacityPercent
           onMoved: function(v) {
-            root.overlayOpacityPercent = Math.round(v * 100)
+            root.overlayOpacityPercent = Math.round(v)
           }
         }
 
@@ -383,7 +381,7 @@ PopupCard {
               selected: root.overlayOpacityPercent === modelData
               onClicked: {
                 root.overlayOpacityPercent = modelData
-                opacitySlider.value = modelData / 100.0
+                opacitySlider.value = modelData
               }
             }
           }
@@ -700,6 +698,7 @@ PopupCard {
       }
     }
   }
+}
 
   // =========================================================================
   // MODAL 1: Record Custom Keybinding Dialog with Automatic Conflict Resolving

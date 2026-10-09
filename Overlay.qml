@@ -209,9 +209,7 @@ Item {
     // Automatically hide on focus loss
     HyprlandFocusGrab {
       active: root.opened && root.focusPrimed && config.autoHideOnFocusLoss
-      windows: (settingsLoader.item && settingsLoader.item.open)
-        ? [panelWindow, settingsLoader.item]
-        : [panelWindow]
+      windows: [panelWindow]
       onCleared: {
         if (root.opened && config.autoHideOnFocusLoss) {
           root.hide()
@@ -400,24 +398,6 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           spacing: 6
 
-          // Open in External Terminal button
-          Button {
-            text: "↗"
-            tooltipText: "Open in standalone terminal (foot/xdg-terminal-exec)"
-            fontSize: Style.font.caption
-            onClicked: {
-              Quickshell.execDetached(["omarchy-launch-terminal"])
-            }
-          }
-
-          // Settings Button
-          Button {
-            text: "⚙"
-            tooltipText: "Omaguake Settings"
-            fontSize: Style.font.caption
-            onClicked: root.openSettings()
-          }
-
           // Slide Up / Minimize button
           Button {
             text: "▲"
@@ -454,28 +434,6 @@ Item {
             }
           }
         }
-      }
-    }
-  }
-
-  function openSettings() {
-    if (!settingsLoader.active) {
-      settingsLoader.active = true
-    } else if (settingsLoader.item) {
-      settingsLoader.item.open = !settingsLoader.item.open
-    }
-  }
-
-  // Settings Overlay Loader
-  Loader {
-    id: settingsLoader
-    active: false
-    source: Qt.resolvedUrl("SettingsOverlay.qml")
-    onLoaded: {
-      if (item) {
-        item.anchorItem = container
-        item.configManager = config
-        item.open = true
       }
     }
   }
