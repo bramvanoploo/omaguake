@@ -29,6 +29,7 @@ Item {
     { id: 1, title: "1: Default Terminal", shellName: "bash" }
   ]
 
+  property string terminalIcon: "\uf489"
   property string currentSchemeName: "Omaguake"
 
   FileView {
@@ -157,6 +158,7 @@ Item {
     function hide(): void { root.hide() }
     function open(): void { root.show() }
     function close(): void { root.hide() }
+    function newTab(): void { root.createTab() }
     function retheme(): void { root.reloadTheme() }
   }
 
@@ -167,6 +169,7 @@ Item {
     function hide(): void { root.hide() }
     function open(): void { root.show() }
     function close(): void { root.hide() }
+    function newTab(): void { root.createTab() }
     function retheme(): void { root.reloadTheme() }
   }
 
@@ -428,7 +431,7 @@ Item {
                   anchors.right: closeBtn.visible ? closeBtn.left : parent.right
                   anchors.rightMargin: 6
                   anchors.verticalCenter: parent.verticalCenter
-                  text: modelData.title
+                  text: root.terminalIcon + " " + modelData.title
                   font.family: Style.font.family
                   font.pixelSize: Style.font.bodySmall
                   font.bold: tabItem.isActive

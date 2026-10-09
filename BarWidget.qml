@@ -36,7 +36,7 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: "\uf120"
+    text: "\uf489"
     slotSize: Style.bar.iconSlot
     tooltipText: "Omaguake Dropdown Terminal" + (config.keybinding ? " (" + config.keybinding + ")" : "") + "\nLeft-click: Toggle · Right-click: Settings"
 
