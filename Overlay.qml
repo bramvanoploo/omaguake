@@ -172,6 +172,7 @@ Item {
       tabId: String(newId),
       schemeName: root.currentSchemeName,
       clipboardBinds: root.currentClipboardBinds,
+      toggleKeybinding: config.keybinding || "",
       visible: false,
       activeTab: false
     })
@@ -205,6 +206,9 @@ Item {
     term.switchTabNumberRequested.connect(function(tabNum) {
       root.selectTabByNumber(tabNum)
     })
+    term.toggleRequested.connect(function() {
+      root.toggle()
+    })
 
     var newTabs = tabs.slice()
     newTabs.push({
@@ -219,9 +223,18 @@ Item {
     currentTabIndex = tabs.length - 1
     root.refreshTabTitles()
     root.updateTerminalVisibility()
+
+    if (term && typeof term.reloadColorScheme === "function") {
+      term.reloadColorScheme(root.currentSchemeName)
+    }
+
     Qt.callLater(function() {
+      if (term && typeof term.reloadColorScheme === "function") {
+        term.reloadColorScheme(root.currentSchemeName)
+      }
       root.refreshActiveTerminal()
       tabsFlick.contentX = Math.max(0, tabsRow.width - tabsFlick.width)
+      root.reloadTheme()
     })
   }
 
@@ -575,6 +588,13 @@ Item {
     function onOverlayOpacityPercentChanged() {
       root.reloadTheme()
     }
+    function onKeybindingChanged() {
+      for (var i = 0; i < root.tabs.length; i++) {
+        if (root.tabs[i].termItem) {
+          root.tabs[i].termItem.toggleKeybinding = config.keybinding || ""
+        }
+      }
+    }
   }
 
   property bool focusPrimed: false
@@ -695,6 +715,7 @@ Item {
             anchors.fill: parent
             schemeName: root.currentSchemeName
             clipboardBinds: root.currentClipboardBinds
+            toggleKeybinding: config.keybinding || ""
           }
         }
       }

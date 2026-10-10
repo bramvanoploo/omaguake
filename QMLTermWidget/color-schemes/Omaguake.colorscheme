@@ -1,93 +1,93 @@
 [General]
 Description=Omaguake
-Opacity=0.50
+Opacity=0.90
 
 [Background]
-Color=15,27,33
+Color=12,13,19
 
 [BackgroundFaint]
-Color=6,21,27
+Color=1,2,11
 
 [BackgroundIntense]
-Color=31,44,50
+Color=30,31,35
 
 [Foreground]
-Color=186,181,186
+Color=188,178,169
 
 [ForegroundFaint]
-Color=72,76,79
+Color=67,66,66
 
 [ForegroundIntense]
-Color=214,209,214
+Color=216,205,196
 
 [Color0]
-Color=15,27,33
+Color=12,13,19
 
 [Color0Faint]
-Color=15,27,33
+Color=12,13,19
 
 [Color0Intense]
-Color=72,76,79
+Color=67,66,66
 
 [Color1]
-Color=171,118,113
+Color=173,106,106
 
 [Color1Faint]
-Color=171,118,113
+Color=173,106,106
 
 [Color1Intense]
-Color=205,149,144
+Color=207,137,136
 
 [Color2]
-Color=117,137,109
+Color=164,186,155
 
 [Color2Faint]
-Color=117,137,109
+Color=164,186,155
 
 [Color2Intense]
-Color=148,169,140
+Color=197,219,187
 
 [Color3]
-Color=171,118,113
+Color=227,168,102
 
 [Color3Faint]
-Color=171,118,113
+Color=227,168,102
 
 [Color3Intense]
-Color=205,149,144
+Color=255,201,133
 
 [Color4]
-Color=120,131,139
+Color=104,124,155
 
 [Color4Faint]
-Color=120,131,139
+Color=104,124,155
 
 [Color4Intense]
-Color=151,162,171
+Color=135,155,187
 
 [Color5]
-Color=152,123,126
+Color=133,118,124
 
 [Color5Faint]
-Color=152,123,126
+Color=133,118,124
 
 [Color5Intense]
-Color=184,154,157
+Color=165,149,155
 
 [Color6]
-Color=113,134,140
+Color=63,131,157
 
 [Color6Faint]
-Color=113,134,140
+Color=63,131,157
 
 [Color6Intense]
-Color=144,166,172
+Color=97,162,189
 
 [Color7]
-Color=186,181,186
+Color=188,178,169
 
 [Color7Faint]
-Color=186,181,186
+Color=188,178,169
 
 [Color7Intense]
-Color=214,209,214
+Color=216,205,196

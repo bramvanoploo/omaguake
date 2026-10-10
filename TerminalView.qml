@@ -24,7 +24,9 @@ Item {
   signal nextTabRequested()
   signal previousTabRequested()
   signal switchTabNumberRequested(int tabNumber)
+  signal toggleRequested()
 
+  property string toggleKeybinding: ""
   property string schemeName: "Omaguake"
 
   onSchemeNameChanged: {
@@ -103,6 +105,44 @@ Item {
     return false
   }
 
+  function matchChord(event, chordStr) {
+    if (!chordStr || !chordStr.trim()) return false
+    var parts = chordStr.split("+").map(function(s) { return s.trim().toUpperCase() })
+    var expectedMods = 0
+    var expectedKeyStr = ""
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i]
+      if (p === "CTRL" || p === "CONTROL") expectedMods |= Qt.ControlModifier
+      else if (p === "ALT") expectedMods |= Qt.AltModifier
+      else if (p === "SUPER" || p === "META") expectedMods |= Qt.MetaModifier
+      else if (p === "SHIFT") expectedMods |= Qt.ShiftModifier
+      else expectedKeyStr = p
+    }
+
+    var activeMods = event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.ShiftModifier | Qt.AltModifier)
+    if (activeMods !== expectedMods) return false
+
+    var k = event.key
+    if (expectedKeyStr === "SPACE") return (k === Qt.Key_Space)
+    if (expectedKeyStr === "GRAVE" || expectedKeyStr === "`" || expectedKeyStr === "~") return (k === Qt.Key_QuoteLeft || k === Qt.Key_AsciiTilde)
+    if (expectedKeyStr === "RETURN" || expectedKeyStr === "ENTER") return (k === Qt.Key_Return || k === Qt.Key_Enter)
+    if (expectedKeyStr === "TAB") return (k === Qt.Key_Tab || k === Qt.Key_Backtab)
+    if (expectedKeyStr === "ESCAPE" || expectedKeyStr === "ESC") return (k === Qt.Key_Escape)
+    if (expectedKeyStr === "BACKSPACE") return (k === Qt.Key_Backspace)
+    if (expectedKeyStr.indexOf("F") === 0 && expectedKeyStr.length >= 2) {
+      var fNum = parseInt(expectedKeyStr.slice(1), 10)
+      if (fNum >= 1 && fNum <= 12) return (k === (Qt.Key_F1 + fNum - 1))
+    }
+    if (expectedKeyStr.length === 1 && expectedKeyStr >= "A" && expectedKeyStr <= "Z") {
+      return (k === (Qt.Key_A + (expectedKeyStr.charCodeAt(0) - 65)))
+    }
+    if (expectedKeyStr.length === 1 && expectedKeyStr >= "0" && expectedKeyStr <= "9") {
+      return (k === (Qt.Key_0 + (expectedKeyStr.charCodeAt(0) - 48)))
+    }
+    if (event.text && event.text.toUpperCase() === expectedKeyStr) return true
+    return false
+  }
+
   function checkIsCopy(event) {
     if (clipboardBinds && clipboardBinds.copy && matchKeyBind(event, clipboardBinds.copy)) {
       return true
@@ -133,6 +173,7 @@ Item {
     anchors.topMargin: 12
     anchors.bottomMargin: 10
     focus: root.activeTab
+    Keys.priority: Keys.BeforeItem
 
     colorScheme: root.schemeName
     font.family: (Style.resolvedFontFamily && Style.resolvedFontFamily !== "monospace")
@@ -157,6 +198,12 @@ Item {
     }
 
     Keys.onPressed: function(event) {
+      if (root.toggleKeybinding && root.matchChord(event, root.toggleKeybinding)) {
+        root.toggleRequested()
+        event.accepted = true
+        return
+      }
+
       var isCopy = root.checkIsCopy(event)
       var isPaste = root.checkIsPaste(event)
 
@@ -233,6 +280,7 @@ Item {
 
     Component.onCompleted: {
       termSession.startShellProgram()
+      root.reloadColorScheme(root.schemeName)
       if (root.activeTab) {
         root.refreshTerminal()
       }

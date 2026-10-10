@@ -35,6 +35,12 @@ PopupCard {
   property var recordedSuggestions: []
   property bool isCheckingRecordedKey: false
 
+  // Key Conflict Dialog state
+  property bool keyConflictDialogOpen: false
+
+  // Gestures Conflict Dialog state
+  property bool gestureConflictDialogOpen: false
+
   // Custom Gestures Dialog state
   property bool customGesturesDialogOpen: false
   property int candidateGestureFingers: 3
@@ -52,6 +58,8 @@ PopupCard {
     } else {
       recordingDialogOpen = false
       customGesturesDialogOpen = false
+      keyConflictDialogOpen = false
+      gestureConflictDialogOpen = false
     }
   }
 
@@ -105,7 +113,7 @@ PopupCard {
     saveToConfig()
   }
 
-  function applyGesturesDirectly(enabled, fingers) {
+  function applyGesturesDirectly(enabled, fingers, unbind) {
     if (!configManager) return
     gesturesEnabled = enabled
     gestureFingers = fingers
@@ -115,7 +123,7 @@ PopupCard {
       currentKeybinding,
       enabled ? "1" : "0",
       String(fingers),
-      "0"
+      unbind ? "1" : "0"
     ]
     applyProc.running = true
     saveToConfig()
@@ -496,16 +504,21 @@ PopupCard {
         Button {
           id: applySuggestedKeyBtn
           readonly property bool isSuggestedAssigned: root.currentKeybinding === "CTRL + SPACE"
-          readonly property bool isSuggestedDisabled: root.suggestedKeyConflict && !isSuggestedAssigned
           text: isSuggestedAssigned ? "✓ CTRL + SPACE" : "Apply Suggested (CTRL + SPACE)"
-          enabled: !isSuggestedDisabled && !isSuggestedAssigned
+          enabled: !isSuggestedAssigned
           selected: isSuggestedAssigned
           opacity: enabled ? 1.0 : (isSuggestedAssigned ? 0.9 : 0.45)
-          tooltipText: isSuggestedDisabled
-            ? (root.suggestedKeyConflictMessage || "CTRL + SPACE is already in use by another shortcut. Choose a custom shortcut.")
-            : (isSuggestedAssigned ? "CTRL + SPACE is currently assigned" : "Apply suggested shortcut (CTRL + SPACE)")
+          tooltipText: isSuggestedAssigned
+            ? "CTRL + SPACE is currently assigned"
+            : (root.suggestedKeyConflict
+               ? (root.suggestedKeyConflictMessage + " Click to resolve options.")
+               : "Apply suggested shortcut (CTRL + SPACE)")
           onClicked: {
-            root.applyKeybindingDirectly("CTRL + SPACE", false)
+            if (root.suggestedKeyConflict) {
+              root.keyConflictDialogOpen = true
+            } else {
+              root.applyKeybindingDirectly("CTRL + SPACE", false)
+            }
           }
         }
 
@@ -575,17 +588,22 @@ PopupCard {
         // Suggested Gestures button
         Button {
           id: applySuggestedGestBtn
-          readonly property bool isSuggestedDisabled: root.suggestedGestureConflict && !root.gesturesEnabled
           readonly property bool isSuggestedGestAssigned: root.gesturesEnabled && root.gestureFingers === 3
           text: isSuggestedGestAssigned ? "✓ 3-Finger Swipe" : "Apply Suggested (3-Finger Swipe)"
-          enabled: !isSuggestedDisabled && !isSuggestedGestAssigned
+          enabled: !isSuggestedGestAssigned
           selected: isSuggestedGestAssigned
           opacity: enabled ? 1.0 : (isSuggestedGestAssigned ? 0.9 : 0.45)
-          tooltipText: isSuggestedDisabled
-            ? (root.suggestedGestureConflictMessage || "3-finger gestures conflict with existing system settings.")
-            : (isSuggestedGestAssigned ? "3-finger gestures are enabled" : "Enable 3-finger swipe down to show, swipe up to hide")
+          tooltipText: isSuggestedGestAssigned
+            ? "3-finger gestures are enabled"
+            : (root.suggestedGestureConflict
+               ? (root.suggestedGestureConflictMessage + " Click to resolve options.")
+               : "Enable 3-finger swipe down to show, swipe up to hide")
           onClicked: {
-            root.applyGesturesDirectly(true, 3)
+            if (root.suggestedGestureConflict) {
+              root.gestureConflictDialogOpen = true
+            } else {
+              root.applyGesturesDirectly(true, 3)
+            }
           }
         }
 
@@ -1035,14 +1053,331 @@ PopupCard {
           }
 
           Button {
+            visible: root.customGestureConflict
+            text: "Replace Existing Gesture"
+            fontSize: Style.font.caption
+            tooltipText: "Disable the existing " + root.candidateGestureFingers + "-finger gesture and assign to Omaguake"
+            onClicked: {
+              root.applyGesturesDirectly(true, root.candidateGestureFingers, true)
+              root.customGesturesDialogOpen = false
+            }
+          }
+
+          Button {
             text: "Apply Gestures"
             selected: true
             enabled: !root.customGestureConflict
             opacity: enabled ? 1.0 : 0.4
             onClicked: {
-              root.applyGesturesDirectly(true, root.candidateGestureFingers)
+              root.applyGesturesDirectly(true, root.candidateGestureFingers, false)
               root.customGesturesDialogOpen = false
             }
+          }
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // MODAL 3: Keybinding Conflict Resolution Dialog
+  // =========================================================================
+  Rectangle {
+    id: keyConflictModalScrim
+    visible: root.keyConflictDialogOpen
+    anchors.fill: parent
+    color: Qt.rgba(0, 0, 0, 0.7)
+    radius: Style.cornerRadius
+    z: 110
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: {} // Block clicks outside the dialog
+    }
+
+    Item {
+      anchors.fill: parent
+      focus: root.keyConflictDialogOpen
+
+      Keys.priority: Keys.BeforeItem
+      Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Escape) {
+          root.keyConflictDialogOpen = false
+          event.accepted = true
+        }
+      }
+    }
+
+    Rectangle {
+      width: parent.width - Style.space(32)
+      height: keyConflictCol.implicitHeight + Style.space(32)
+      anchors.centerIn: parent
+      radius: Style.cornerRadius
+      color: Color.background
+      border.color: Color.urgent
+      border.width: 1
+
+      Column {
+        id: keyConflictCol
+        anchors.fill: parent
+        anchors.margins: Style.space(16)
+        spacing: Style.space(14)
+
+        Row {
+          spacing: Style.spacing.sm
+          Text {
+            text: "⚠"
+            font.family: Style.font.family
+            font.pixelSize: Style.font.heading
+            color: Color.urgent
+            anchors.verticalCenter: parent.verticalCenter
+          }
+          Text {
+            text: "Keybinding Conflict Detected"
+            font.family: Style.font.family
+            font.pixelSize: Style.font.heading
+            font.bold: true
+            color: Color.foreground
+            anchors.verticalCenter: parent.verticalCenter
+          }
+        }
+
+        // Conflict description box
+        Rectangle {
+          width: parent.width
+          height: keyConflictMsgText.implicitHeight + 16
+          radius: Style.cornerRadius > 0 ? 4 : 0
+          color: Qt.rgba(0.9, 0.2, 0.2, 0.15)
+          border.color: Color.urgent
+          border.width: 1
+
+          Text {
+            id: keyConflictMsgText
+            anchors.fill: parent
+            anchors.margins: 8
+            text: root.suggestedKeyConflictMessage || "The suggested shortcut 'CTRL + SPACE' is already assigned in your system."
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.WordWrap
+            color: Color.urgent
+            verticalAlignment: Text.AlignVCenter
+          }
+        }
+
+        Text {
+          text: "How would you like to proceed?"
+          font.family: Style.font.family
+          font.pixelSize: Style.font.bodySmall
+          font.bold: true
+          color: Color.foreground
+        }
+
+        // Action Options
+        Column {
+          width: parent.width
+          spacing: Style.space(8)
+
+          // Option 1: Replace existing keybinding
+          Button {
+            width: parent.width
+            text: "Replace Existing Keybinding (Take Ownership)"
+            selected: true
+            tooltipText: "Disables the conflicting binding in Hyprland and assigns CTRL + SPACE to Omaguake"
+            onClicked: {
+              root.keyConflictDialogOpen = false
+              root.applyKeybindingDirectly("CTRL + SPACE", true)
+            }
+          }
+
+          // Option 2: Record a different keybinding
+          Button {
+            width: parent.width
+            text: "Choose a Different Keybinding (Record Input)…"
+            tooltipText: "Record an alternative shortcut such as F12 or CTRL + GRAVE"
+            onClicked: {
+              root.keyConflictDialogOpen = false
+              root.recordedChord = ""
+              root.recordedConflict = false
+              root.recordedConflictMessage = ""
+              root.recordedSuggestions = []
+              root.recordingDialogOpen = true
+              Qt.callLater(function() {
+                recordKeyCatcher.forceActiveFocus()
+              })
+            }
+          }
+
+          // Quick conflict-free suggestions row
+          Row {
+            visible: root.keySuggestions && root.keySuggestions.length > 0
+            spacing: 6
+            Text {
+              text: "Suggested alternatives:"
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              color: Color.muted
+              anchors.verticalCenter: parent.verticalCenter
+            }
+            Repeater {
+              model: root.keySuggestions
+              delegate: Button {
+                text: modelData
+                fontSize: Style.font.caption
+                tooltipText: "Use " + modelData + " as shortcut"
+                onClicked: {
+                  root.keyConflictDialogOpen = false
+                  root.applyKeybindingDirectly(modelData, false)
+                }
+              }
+            }
+          }
+        }
+
+        // Footer / Cancel
+        Row {
+          anchors.right: parent.right
+          spacing: Style.spacing.sm
+
+          Button {
+            text: "Do Nothing (Cancel)"
+            onClicked: root.keyConflictDialogOpen = false
+          }
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // MODAL 4: Gesture Conflict Resolution Dialog
+  // =========================================================================
+  Rectangle {
+    id: gestureConflictModalScrim
+    visible: root.gestureConflictDialogOpen
+    anchors.fill: parent
+    color: Qt.rgba(0, 0, 0, 0.7)
+    radius: Style.cornerRadius
+    z: 110
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: {} // Block clicks outside the dialog
+    }
+
+    Item {
+      anchors.fill: parent
+      focus: root.gestureConflictDialogOpen
+
+      Keys.priority: Keys.BeforeItem
+      Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Escape) {
+          root.gestureConflictDialogOpen = false
+          event.accepted = true
+        }
+      }
+    }
+
+    Rectangle {
+      width: parent.width - Style.space(32)
+      height: gestureConflictCol.implicitHeight + Style.space(32)
+      anchors.centerIn: parent
+      radius: Style.cornerRadius
+      color: Color.background
+      border.color: Color.urgent
+      border.width: 1
+
+      Column {
+        id: gestureConflictCol
+        anchors.fill: parent
+        anchors.margins: Style.space(16)
+        spacing: Style.space(14)
+
+        Row {
+          spacing: Style.spacing.sm
+          Text {
+            text: "⚠"
+            font.family: Style.font.family
+            font.pixelSize: Style.font.heading
+            color: Color.urgent
+            anchors.verticalCenter: parent.verticalCenter
+          }
+          Text {
+            text: "Trackpad Gesture Conflict Detected"
+            font.family: Style.font.family
+            font.pixelSize: Style.font.heading
+            font.bold: true
+            color: Color.foreground
+            anchors.verticalCenter: parent.verticalCenter
+          }
+        }
+
+        // Conflict description box
+        Rectangle {
+          width: parent.width
+          height: gestureConflictMsgText.implicitHeight + 16
+          radius: Style.cornerRadius > 0 ? 4 : 0
+          color: Qt.rgba(0.9, 0.2, 0.2, 0.15)
+          border.color: Color.urgent
+          border.width: 1
+
+          Text {
+            id: gestureConflictMsgText
+            anchors.fill: parent
+            anchors.margins: 8
+            text: root.suggestedGestureConflictMessage || "A 3-finger swipe gesture is already configured on your system."
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.WordWrap
+            color: Color.urgent
+            verticalAlignment: Text.AlignVCenter
+          }
+        }
+
+        Text {
+          text: "How would you like to proceed?"
+          font.family: Style.font.family
+          font.pixelSize: Style.font.bodySmall
+          font.bold: true
+          color: Color.foreground
+        }
+
+        // Action Options
+        Column {
+          width: parent.width
+          spacing: Style.space(8)
+
+          // Option 1: Replace existing gesture
+          Button {
+            width: parent.width
+            text: "Replace Existing Gestures (3-Finger Swipe Down/Up)"
+            selected: true
+            tooltipText: "Disables the conflicting 3-finger gestures and assigns swipe down/up to Omaguake"
+            onClicked: {
+              root.gestureConflictDialogOpen = false
+              root.applyGesturesDirectly(true, 3, true)
+            }
+          }
+
+          // Option 2: Choose 4-finger gestures
+          Button {
+            width: parent.width
+            text: "Use 4-Finger Swipe Gestures Instead…"
+            tooltipText: "Open Custom Gestures dialog to select 4 fingers"
+            onClicked: {
+              root.gestureConflictDialogOpen = false
+              root.candidateGestureFingers = 4
+              root.checkCustomGesture(4)
+              root.customGesturesDialogOpen = true
+            }
+          }
+        }
+
+        // Footer / Cancel
+        Row {
+          anchors.right: parent.right
+          spacing: Style.spacing.sm
+
+          Button {
+            text: "Do Nothing (Cancel)"
+            onClicked: root.gestureConflictDialogOpen = false
           }
         }
       }

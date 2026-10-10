@@ -155,36 +155,82 @@ def find_free_suggestions(exclude_chord=None):
                 break
     return free_suggestions
 
+def extract_gesture_action_description(block):
+    m_exec = re.search(r'(?:exec_cmd|exec)\s*\(\s*[\"\']([^\"\']+)[\"\']', block)
+    if m_exec:
+        cmd = m_exec.group(1).strip()
+        return re.sub(r'^omarchy-shell\s+(?:shell\s+)?', '', cmd)
+    m_global = re.search(r'global\s*\(\s*[\"\']([^\"\']+)[\"\']', block)
+    if m_global:
+        return m_global.group(1).strip()
+    m_act = re.search(r'action\s*=\s*[\"\']([^\"\']+)[\"\']', block)
+    if m_act:
+        return m_act.group(1).strip()
+    return ""
+
 def check_gesture_conflict(fingers=3):
-    files_to_check = [
-        HYPR_DIR / "t2-trackpad.lua",
-        HYPR_DIR / "input.lua",
-        HYPR_DIR / "hyprland.lua"
-    ]
+    files_to_check = []
+    if HYPR_DIR.exists():
+        for p in HYPR_DIR.iterdir():
+            if p.is_file() and (p.suffix in [".lua", ".conf"]):
+                if not any(p.name.endswith(ext) for ext in [".bak", ".tmp", ".old", "~"]) and "bak" not in p.name:
+                    files_to_check.append(p)
+                    
+    priority = ["input.lua", "bindings.lua", "t2-trackpad.lua", "hyprland.lua", "hyprland-gui.lua"]
+    files_to_check.sort(key=lambda x: priority.index(x.name) if x.name in priority else 99)
     
     for f in files_to_check:
-        if not f.exists():
-            continue
         try:
             content = f.read_text(encoding="utf-8")
             # Exclude our own block
             content = re.sub(r"-- BEGIN bramvanoploo\.omaguake.*?-- END bramvanoploo\.omaguake", "", content, flags=re.DOTALL)
             
-            for line in content.splitlines():
-                line = line.strip()
-                if line.startswith("--"):
-                    continue
-                if fingers == 3 and re.search(r'drag_3fg\s*=\s*([123]|true)', line):
-                    return {
-                        "conflict": True,
-                        "message": f"Three-finger drag is enabled in {f.name}, which prevents 3-finger swipe gestures."
-                    }
-                if "hl.gesture" in line or "gesture" in line:
-                    if re.search(rf'fingers\s*=\s*{fingers}', line) and re.search(r'direction\s*=\s*["\'](down|up|vertical)["\']', line):
+            # Check 3-finger drag if fingers == 3
+            if fingers == 3:
+                for line in content.splitlines():
+                    sline = line.strip()
+                    if sline.startswith("--") or sline.startswith("#"):
+                        continue
+                    if re.search(r'drag_3fg\s*=\s*([123]|true)', sline):
                         return {
                             "conflict": True,
-                            "message": f"{fingers}-finger vertical gesture is already configured in {f.name}."
+                            "message": f"Three-finger drag is enabled in {f.name}, which prevents 3-finger swipe gestures."
                         }
+            
+            # Strip comments for block parsing
+            uncommented_lines = []
+            for line in content.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("--") or stripped.startswith("#"):
+                    continue
+                code_part = re.sub(r'--.*$', '', line)
+                code_part = re.sub(r'#.*$', '', code_part)
+                uncommented_lines.append(code_part)
+            clean_content = "\n".join(uncommented_lines)
+            
+            # Search for hl.gesture({ ... }) blocks
+            blocks = re.findall(r'hl\.gesture\s*\(\s*\{([^}]+)\}\s*\)', clean_content, flags=re.DOTALL)
+            for block in blocks:
+                m_f = re.search(r'fingers\s*=\s*(\d+)', block)
+                if not m_f:
+                    continue
+                block_fingers = int(m_f.group(1))
+                if block_fingers != fingers:
+                    continue
+                    
+                m_dir = re.search(r'direction\s*=\s*[\"\']([^\"\']+)[\"\']', block)
+                if not m_dir:
+                    continue
+                direction = m_dir.group(1).lower()
+                
+                # Check if direction conflicts with vertical swipe (up, down, or vertical)
+                if direction in ["up", "down", "vertical"]:
+                    action_desc = extract_gesture_action_description(block)
+                    assigned_str = f" (assigned to '{action_desc}')" if action_desc else ""
+                    return {
+                        "conflict": True,
+                        "message": f"{fingers}-finger swipe {direction} is already configured in {f.name}{assigned_str}."
+                    }
         except Exception:
             pass
             
@@ -252,6 +298,77 @@ def get_current_omaguake_status():
         "key_suggestions": find_free_suggestions(suggested_chord if s_conflict else "")
     }
 
+def disable_gesture_conflicts_in_configs(target_fingers):
+    pattern = re.compile(r'(\n?[ \t]*hl\.gesture\s*\(\s*\{([^}]+)\}\s*\)[ \t]*)', re.DOTALL)
+    if not HYPR_DIR.exists():
+        return
+    for p in HYPR_DIR.iterdir():
+        if p.is_file() and p.suffix in [".lua", ".conf"] and "bak" not in p.name:
+            try:
+                content = p.read_text(encoding="utf-8")
+                def repl(m):
+                    full_match = m.group(1)
+                    inner = m.group(2)
+                    mf = re.search(r'fingers\s*=\s*(\d+)', inner)
+                    if not mf or int(mf.group(1)) != target_fingers:
+                        return full_match
+                    md = re.search(r'direction\s*=\s*[\"\']([^\"\']+)[\"\']', inner)
+                    if not md or md.group(1).lower() not in ["up", "down", "vertical"]:
+                        return full_match
+                    lines = full_match.strip("\n").splitlines()
+                    commented = "\n".join("-- " + l for l in lines)
+                    return "\n-- Disabled by Omaguake (replaced with Omaguake gesture)\n" + commented
+
+                parts = re.split(r'(-- BEGIN bramvanoploo\.omaguake.*?-- END bramvanoploo\.omaguake)', content, flags=re.DOTALL)
+                for i in range(len(parts)):
+                    if not parts[i].startswith("-- BEGIN bramvanoploo.omaguake"):
+                        parts[i] = pattern.sub(repl, parts[i])
+                new_content = "".join(parts)
+                if new_content != content:
+                    temp_f = p.with_suffix(".tmp")
+                    temp_f.write_text(new_content, encoding="utf-8")
+                    temp_f.replace(p)
+            except Exception:
+                pass
+
+def disable_key_conflicts_in_configs(chord_norm):
+    if not HYPR_DIR.exists() or not chord_norm:
+        return
+    c_norm, c_mods, c_k = normalize_key_chord(chord_norm)
+    for p in HYPR_DIR.iterdir():
+        if p.is_file() and p.suffix in [".lua", ".conf"] and "bak" not in p.name:
+            try:
+                content = p.read_text(encoding="utf-8")
+                parts = re.split(r'(-- BEGIN bramvanoploo\.omaguake.*?-- END bramvanoploo\.omaguake)', content, flags=re.DOTALL)
+                changed = False
+                for i in range(len(parts)):
+                    if not parts[i].startswith("-- BEGIN bramvanoploo.omaguake"):
+                        lines = parts[i].splitlines()
+                        new_lines = []
+                        for line in lines:
+                            sline = line.strip()
+                            if sline.startswith("--") or sline.startswith("#"):
+                                new_lines.append(line)
+                                continue
+                            m = re.search(r'(?:o\.bind|hl\.bind)\s*\(\s*[\"\']([^\"\']+)[\"\']', line)
+                            if m:
+                                b_chord = m.group(1).strip()
+                                b_norm, b_mods, b_key = normalize_key_chord(b_chord)
+                                if b_key == c_k and b_mods == c_mods:
+                                    new_lines.append("-- Disabled by Omaguake (shortcut replaced)")
+                                    new_lines.append("-- " + line)
+                                    changed = True
+                                    continue
+                            new_lines.append(line)
+                        parts[i] = "\n".join(new_lines)
+                if changed:
+                    new_content = "".join(parts)
+                    temp_f = p.with_suffix(".tmp")
+                    temp_f.write_text(new_content, encoding="utf-8")
+                    temp_f.replace(p)
+            except Exception:
+                pass
+
 def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_conflicts=False):
     norm_chord = ""
     if keychord and keychord.strip() and keychord.strip().lower() not in ["none", ""]:
@@ -261,11 +378,16 @@ def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_con
             key_res = check_key_conflict(norm_chord)
             if key_res["conflict"]:
                 return {"success": False, "error": key_res["message"]}
+        else:
+            disable_key_conflicts_in_configs(norm_chord)
         
     if enable_gestures:
-        gest_res = check_gesture_conflict(gesture_fingers)
-        if gest_res["conflict"]:
-            return {"success": False, "error": gest_res["message"]}
+        if not unbind_conflicts:
+            gest_res = check_gesture_conflict(gesture_fingers)
+            if gest_res["conflict"]:
+                return {"success": False, "error": gest_res["message"]}
+        else:
+            disable_gesture_conflicts_in_configs(gesture_fingers)
             
     # Update bindings.lua
     BINDINGS_LUA.parent.mkdir(parents=True, exist_ok=True)
@@ -284,7 +406,9 @@ def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_con
     if norm_chord:
         if unbind_conflicts:
             block_lines.append(f'hl.unbind("{norm_chord}")')
-        block_lines.append(f'hl.bind("{norm_chord}", hl.dsp.global("bramvanoploo.omaguake:toggle"))')
+        # dont_inhibit: let this bind fire even while Omaguake's ShortcutInhibitor is active,
+        # so the same chord also closes the panel (and never reaches the terminal / fcitx5).
+        block_lines.append(f'hl.bind("{norm_chord}", hl.dsp.global("bramvanoploo.omaguake:toggle"), {{ dont_inhibit = true }})')
         
     if enable_gestures:
         block_lines.append(f'-- Omaguake Gestures: {gesture_fingers}-finger swipe down to show, swipe up to hide')
