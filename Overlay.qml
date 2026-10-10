@@ -634,7 +634,7 @@ Item {
       width: parent.width
       height: parent.height
       y: (root.slideProgress - 1.0) * parent.height
-      opacity: Math.max(0.01, root.slideProgress) * container.cardOpacity
+      opacity: Math.max(0.01, root.slideProgress)
 
       readonly property real cardOpacity: {
         if (config && config.overlayOpacityPercent !== undefined) {
@@ -647,23 +647,25 @@ Item {
         return 0.88
       }
 
-      // Main Background Card
-      Rectangle {
-        id: bgCard
-        anchors.fill: parent
-        color: Color.background
-        border.color: Color.muted
-        border.width: 1
-        radius: Style.cornerRadius
-      }
-
-      // Terminal Content Area
+      // Terminal Content Area (Opacity setting applied specifically to terminal)
       Item {
         id: terminalArea
         width: parent.width
         y: config.tabsPosition === "top" ? tabBar.height : 0
         height: parent.height - tabBar.height
         clip: true
+        opacity: container.cardOpacity
+
+        // Terminal Background Card
+        Rectangle {
+          id: terminalBg
+          anchors.fill: parent
+          color: Color.background
+          topLeftRadius: config.tabsPosition === "top" ? 0 : Style.cornerRadius
+          topRightRadius: config.tabsPosition === "top" ? 0 : Style.cornerRadius
+          bottomLeftRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
+          bottomRightRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
+        }
 
         Component {
           id: terminalComponent
@@ -675,14 +677,18 @@ Item {
         }
       }
 
-      // Tab Bar (Bottom by default, or Top when configured)
+      // Tab Bar (Bottom by default, or Top when configured) - Not affected by opacity setting
       Rectangle {
         id: tabBar
         width: parent.width
         height: 38
         y: config.tabsPosition === "top" ? 0 : parent.height - height
-        color: Qt.rgba(Color.background.r * 0.75, Color.background.g * 0.75, Color.background.b * 0.75, Math.min(0.96, container.cardOpacity + 0.05))
+        color: Qt.rgba(Color.background.r * 0.75, Color.background.g * 0.75, Color.background.b * 0.75, 1.0)
         border.width: 0
+        topLeftRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
+        topRightRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
+        bottomLeftRadius: config.tabsPosition === "bottom" ? Style.cornerRadius : 0
+        bottomRightRadius: config.tabsPosition === "bottom" ? Style.cornerRadius : 0
 
         // Divider between tab bar and terminal
         Rectangle {
@@ -851,6 +857,18 @@ Item {
           }
         }
       }
+
+      // Outer Frame Border
+      Rectangle {
+        id: bgCard
+        anchors.fill: parent
+        color: "transparent"
+        border.color: Color.muted
+        border.width: 1
+        radius: Style.cornerRadius
+        enabled: false
+      }
     }
   }
 }
+

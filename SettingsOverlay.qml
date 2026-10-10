@@ -345,7 +345,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 2. Overlay Opacity Setting
+    // 2. Terminal Opacity Setting
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -353,14 +353,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: "Overlay Opacity: " + root.overlayOpacityPercent + "%"
+          text: "Terminal Opacity: " + root.overlayOpacityPercent + "%"
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: "Adjust terminal background translucency (desktop blur shows through)"
+          text: "Adjust terminal background translucency (desktop blur shows through; tab bar remains solid)"
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted

@@ -61,6 +61,7 @@ omarchy plugin remove bramvanoploo.omaguake
 
 Right-click the Omaguake bar icon to open the configuration overlay:
 - **Height**: Adjust dropdown panel height (20% – 100%).
+- **Opacity**: Adjust terminal background opacity (20% – 100%) without affecting the tab bar.
 - **Tabs Position**: Choose between Bottom (Guake) or Top (Yakuake).
 - **Keybinding**: Enter any key chord; live validation alerts if the chord is already bound.
 - **Trackpad Gestures**: Toggle 3-finger swipe gestures; alerts if gestures conflict with other settings.

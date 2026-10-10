@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "bramvanoploo.omaguake",
   "name": "Omaguake",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "author": "Bram van Oploo",
   "license": "MIT",
   "description": "Guake/Yakuake-style drop-down terminal with tabs, gesture controls, and conflict-checked configuration for Omarchy",
@@ -40,8 +40,8 @@
       {
         "key": "overlayOpacityPercent",
         "type": "number",
-        "label": "Overlay opacity percentage",
-        "description": "Opacity percentage of the plugin overlay background (20-100%)."
+        "label": "Terminal opacity percentage",
+        "description": "Opacity percentage of the terminal background (20-100%)."
       },
       {
         "key": "tabsPosition",

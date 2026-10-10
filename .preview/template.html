@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Omaguake Preview</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background-color: #0b0e14;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", sans-serif;
+    color: #f1f5f9;
+    position: relative;
+    display: flex;
+    padding: 50px 60px;
+    gap: 50px;
+  }
+
+  /* Ambient glowing background */
+  .bg-glow-1 {
+    position: absolute;
+    width: 900px;
+    height: 900px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.14) 0%, rgba(56, 189, 248, 0) 65%);
+    top: -250px;
+    left: -200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bg-glow-2 {
+    position: absolute;
+    width: 1000px;
+    height: 1000px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.16) 0%, rgba(99, 102, 241, 0) 65%);
+    bottom: -250px;
+    right: 50px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bg-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Left column */
+  .left-col {
+    position: relative;
+    z-index: 1;
+    width: 720px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .header {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .badge-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+  }
+
+  .version-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .icon-box {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 28px -6px rgba(56, 189, 248, 0.25);
+  }
+
+  .icon-box svg {
+    width: 36px;
+    height: 36px;
+    fill: #38bdf8;
+  }
+
+  h1 {
+    font-size: 58px;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: #ffffff;
+    line-height: 1;
+  }
+
+  .tagline {
+    font-size: 20px;
+    font-weight: 400;
+    color: #94a3b8;
+    line-height: 1.45;
+  }
+
+  /* Feature cards list */
+  .features {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    margin: 10px 0;
+  }
+
+  .feature-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 15px 18px;
+    background: rgba(18, 24, 38, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .feature-icon-wrap {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .feature-icon-wrap svg {
+    width: 22px;
+    height: 22px;
+    fill: #38bdf8;
+  }
+
+  .feature-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .feature-title {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .feature-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .feature-desc {
+    font-size: 13.5px;
+    color: #94a3b8;
+    line-height: 1.4;
+  }
+
+  .footer-note {
+    font-size: 13px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Right column */
+  .right-col {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    height: 980px;
+  }
+
+  .preview-stack {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Terminal Window Overlay */
+  .term-card {
+    position: absolute;
+    top: 15px;
+    left: 0;
+    width: 950px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.75),
+                0 0 35px -5px rgba(56, 189, 248, 0.15);
+    background: #0f141d;
+    z-index: 1;
+  }
+
+  .window-topbar {
+    height: 36px;
+    background: #141a24;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+  }
+
+  .window-btn {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+  .btn-close { background: #ef4444; }
+  .btn-min { background: #f59e0b; }
+  .btn-max { background: #10b981; }
+
+  .window-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-left: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  .term-card img {
+    width: 100%;
+    display: block;
+  }
+
+  /* Settings Panel Overlay */
+  .settings-card {
+    position: absolute;
+    bottom: 5px;
+    right: 0;
+    width: 535px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85),
+                0 0 45px -5px rgba(56, 189, 248, 0.25);
+    background: #10141d;
+    z-index: 2;
+  }
+
+  .settings-topbar {
+    height: 36px;
+    background: #141a24;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+
+  .settings-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #38bdf8;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .settings-card img {
+    width: 100%;
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-glow-1"></div>
+<div class="bg-glow-2"></div>
+<div class="bg-grid"></div>
+
+<!-- Left Column -->
+<div class="left-col">
+  <div class="header">
+    <div class="badge-row">
+      <div class="badge">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        Omarchy Plugin
+      </div>
+      <div class="version-badge">v{{VERSION}}</div>
+    </div>
+
+    <div class="title-row">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24">
+          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zm-12-3l4-3-4-3v6zm6 0h4v-2h-4v2z"/>
+        </svg>
+      </div>
+      <h1>Omaguake</h1>
+    </div>
+
+    <div class="tagline">
+      Quake-style drop-down terminal for Omarchy, powered by native QMLTermWidget emulation.
+    </div>
+  </div>
+
+  <!-- Features list -->
+  <div class="features">
+
+    <!-- Global Keybinding -->
+    <div class="feature-card">
+      <div class="feature-icon-wrap">
+        <svg viewBox="0 0 24 24">
+          <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
+        </svg>
+      </div>
+      <div class="feature-body">
+        <div class="feature-title">
+          Global Shortcut Keybinding
+          <span class="feature-pill">CTRL + SPACE</span>
+        </div>
+        <div class="feature-desc">
+          Instant drop-down toggle from anywhere. One-click suggested binding or record any custom shortcut with live conflict detection.
+        </div>
+      </div>
+    </div>
+
+    <!-- Trackpad Gestures -->
+    <div class="feature-card">
+      <div class="feature-icon-wrap">
+        <svg viewBox="0 0 24 24">
+          <path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74c1.21-.81 2-2.18 2-3.74C16 5.01 13.99 3 11.5 3S7 5.01 7 7.5c0 1.56.79 2.93 2 3.74zm9.84 4.63l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6c0-.83-.67-1.5-1.5-1.5S10 6.67 10 7.5v10.74l-3.43-.72c-.08-.01-.15-.02-.24-.02-.31 0-.59.13-.79.33l-.79.8 4.94 4.94c.27.27.65.43 1.06.43h6.79c.75 0 1.33-.55 1.44-1.28l.75-5.27c.01-.07.02-.14.02-.21 0-.62-.38-1.16-.91-1.38z"/>
+        </svg>
+      </div>
+      <div class="feature-body">
+        <div class="feature-title">
+          Touchpad Gestures
+          <span class="feature-pill">3 & 4 Fingers</span>
+        </div>
+        <div class="feature-desc">
+          Natural Mac-style trackpad navigation. Swipe down to summon the terminal and swipe up to smoothly slide it away.
+        </div>
+      </div>
+    </div>
+
+    <!-- Auto-Hide on Focus Loss -->
+    <div class="feature-card">
+      <div class="feature-icon-wrap">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+        </svg>
+      </div>
+      <div class="feature-body">
+        <div class="feature-title">
+          Hide on Focus Loss
+          <span class="feature-pill">Auto-Dismiss</span>
+        </div>
+        <div class="feature-desc">
+          Clicking outside the overlay or refocusing other windows immediately and gracefully hides the terminal.
+        </div>
+      </div>
+    </div>
+
+    <!-- Multi-Tab Workflow -->
+    <div class="feature-card">
+      <div class="feature-icon-wrap">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+        </svg>
+      </div>
+      <div class="feature-body">
+        <div class="feature-title">
+          Multi-Tab Terminal Sessions
+          <span class="feature-pill">Guake & Yakuake</span>
+        </div>
+        <div class="feature-desc">
+          Tabs display current directory and last executed command. Easily position tab bar at the bottom or top.
+        </div>
+      </div>
+    </div>
+
+    <!-- Independent Terminal Opacity -->
+    <div class="feature-card">
+      <div class="feature-icon-wrap">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.64 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/>
+        </svg>
+      </div>
+      <div class="feature-body">
+        <div class="feature-title">
+          Independent Terminal Opacity
+          <span class="feature-pill">Solid Tab Bar</span>
+        </div>
+        <div class="feature-desc">
+          Adjust terminal background translucency and desktop blur while keeping the tab bar, tabs, and navigation controls 100% solid.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    <span>MIT License</span>
+    <span>•</span>
+    <span>Built for Omarchy Linux with Quickshell & Hyprland</span>
+  </div>
+</div>
+
+<!-- Right Column: Visual Previews Stack -->
+<div class="right-col">
+  <div class="preview-stack">
+
+    <!-- Terminal Overlay (Top-Left in stack) -->
+    <div class="term-card">
+      <div class="window-topbar">
+        <div class="window-btn btn-close"></div>
+        <div class="window-btn btn-min"></div>
+        <div class="window-btn btn-max"></div>
+        <span class="window-title">Omaguake Drop-down Overlay (~ ❯)</span>
+      </div>
+      <img src="term_capture.png" alt="Omaguake Terminal View">
+    </div>
+
+    <!-- Settings Overlay (Bottom-Right in stack) -->
+    <div class="settings-card">
+      <div class="settings-topbar">
+        <div class="settings-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+          </svg>
+          Configuration Panel
+        </div>
+        <div style="font-size: 11px; color: #64748b; font-weight: 500;">Right-click Bar Widget</div>
+      </div>
+      <img src="settings_capture.png" alt="Omaguake Settings Panel">
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
