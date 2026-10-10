@@ -295,7 +295,12 @@ def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_con
     block_lines.append("")
     
     new_content = cleaned + "\n" + "\n".join(block_lines)
-    BINDINGS_LUA.write_text(new_content, encoding="utf-8")
+    temp_binding = BINDINGS_LUA.with_suffix(".tmp")
+    try:
+        temp_binding.write_text(new_content, encoding="utf-8")
+        temp_binding.replace(BINDINGS_LUA)
+    except Exception:
+        BINDINGS_LUA.write_text(new_content, encoding="utf-8")
     
     # Reload hyprland
     try:

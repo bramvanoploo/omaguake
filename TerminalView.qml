@@ -9,7 +9,6 @@ Item {
   id: root
 
   property string tabId: ""
-  property string bridgeScript: ""
   property string currentTitle: "bash"
   property bool activeTab: false
 

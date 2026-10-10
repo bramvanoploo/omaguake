@@ -254,8 +254,12 @@ Item {
   function closeTab(index) {
     if (index < 0 || index >= tabs.length) return
     var tabToClose = tabs[index]
-    if (tabToClose.termItem) {
-      tabToClose.termItem.destroy()
+    if (tabToClose && tabToClose.termItem) {
+      try {
+        tabToClose.termItem.visible = false
+        tabToClose.termItem.activeTab = false
+        tabToClose.termItem.destroy()
+      } catch(e) {}
     }
 
     if (tabs.length <= 1) {
@@ -506,14 +510,27 @@ Item {
 
   property bool themeReloadQueued: false
 
-  function reloadTheme() {
-    if (themeSyncProc.running) {
-      themeReloadQueued = true
-      return
+  Timer {
+    id: themeDebounceTimer
+    interval: 80
+    repeat: false
+    onTriggered: {
+      if (themeSyncProc.running) {
+        root.themeReloadQueued = true
+        return
+      }
+      root.themeReloadQueued = false
+      var cmd = [root.pluginDir + "/scripts/sync-theme.py"]
+      if (config && config.overlayOpacityPercent !== undefined) {
+        cmd.push("--opacity-percent", String(config.overlayOpacityPercent))
+      }
+      themeSyncProc.command = cmd
+      themeSyncProc.running = true
     }
-    themeReloadQueued = false
-    themeSyncProc.command = [root.pluginDir + "/scripts/sync-theme.py"]
-    themeSyncProc.running = true
+  }
+
+  function reloadTheme() {
+    themeDebounceTimer.restart()
   }
 
   function notifyTabsRetheme() {
@@ -535,6 +552,18 @@ Item {
     root.reloadClipboardBinds()
   }
 
+  Component.onDestruction: {
+    if (omarchyThemeWatcher.running) {
+      omarchyThemeWatcher.running = false
+    }
+    if (themeSyncProc.running) {
+      themeSyncProc.running = false
+    }
+    if (clipboardSyncProc.running) {
+      clipboardSyncProc.running = false
+    }
+  }
+
   Connections {
     target: Color
     function onBackgroundChanged() { root.reloadTheme() }
@@ -544,14 +573,7 @@ Item {
   Connections {
     target: config
     function onOverlayOpacityPercentChanged() {
-      if (!themeSyncProc.running) {
-        themeSyncProc.command = [
-          root.pluginDir + "/scripts/sync-theme.py",
-          "--opacity-percent",
-          String(config.overlayOpacityPercent)
-        ]
-        themeSyncProc.running = true
-      }
+      root.reloadTheme()
     }
   }
 

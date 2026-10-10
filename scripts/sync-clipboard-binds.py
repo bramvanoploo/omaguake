@@ -98,7 +98,9 @@ def update_file():
     try:
         if OUTPUT_FILE.exists() and OUTPUT_FILE.read_text(encoding="utf-8") == content:
             return data
-        OUTPUT_FILE.write_text(content, encoding="utf-8")
+        temp_output = OUTPUT_FILE.with_suffix(f"{OUTPUT_FILE.suffix}.tmp.{os.getpid()}")
+        temp_output.write_text(content, encoding="utf-8")
+        temp_output.replace(OUTPUT_FILE)
     except Exception as e:
         sys.stderr.write(f"Error writing {OUTPUT_FILE}: {e}\n")
     return data

@@ -161,6 +161,20 @@ def build_scheme_content(name, opacity, colors_toml, foot_ini):
     return "\n".join(lines).strip() + "\n"
 
 
+def atomic_write_text(path, text):
+    """Write text atomically to destination file via a temporary file in the same directory."""
+    try:
+        temp_path = path.with_suffix(f"{path.suffix}.tmp.{os.getpid()}")
+        temp_path.write_text(text, encoding="utf-8")
+        temp_path.replace(path)
+    except Exception as e:
+        sys.stderr.write(f"Error atomic writing {path}: {e}\n")
+        try:
+            path.write_text(text, encoding="utf-8")
+        except Exception:
+            pass
+
+
 def emit_live_osc_to_ttys(colors_toml):
     """Emit OSC sequences directly to any running PTS terminal attached to quickshell."""
     osc_bytes = b""
@@ -168,7 +182,7 @@ def emit_live_osc_to_ttys(colors_toml):
         proc = subprocess.run(
             ["omarchy-theme-osc", str(THEME_DIR / "colors.toml")],
             capture_output=True,
-            timeout=2
+            timeout=1.5
         )
         if proc.returncode == 0 and proc.stdout:
             osc_bytes = proc.stdout
@@ -178,47 +192,64 @@ def emit_live_osc_to_ttys(colors_toml):
     if not osc_bytes:
         return
 
-    # Find quickshell processes and all descendants
+    # Find quickshell processes and their direct descendants in a single pass
+    # Read /proc in one pass to avoid repeated disk thrashing
     qs_pids = set()
-    for p in glob.glob("/proc/[0-9]*"):
+    parent_map = {}
+    proc_entries = glob.glob("/proc/[0-9]*")
+
+    for p in proc_entries:
         try:
-            with open(p + "/comm", "r", encoding="utf-8", errors="ignore") as f:
-                if "quickshell" in f.read():
-                    qs_pids.add(int(os.path.basename(p)))
+            pid = int(os.path.basename(p))
+            with open(f"{p}/stat", "r", encoding="utf-8", errors="ignore") as f:
+                fields = f.read().split()
+                # fields: [pid, (comm), state, ppid, ...]
+                ppid = int(fields[3])
+                parent_map[pid] = ppid
+            with open(f"{p}/comm", "r", encoding="utf-8", errors="ignore") as f:
+                comm = f.read().strip()
+                if "quickshell" in comm:
+                    qs_pids.add(pid)
         except Exception:
             pass
 
+    if not qs_pids:
+        return
+
+    # Find descendants using in-memory parent_map
     descendants = set(qs_pids)
     changed = True
-    while changed:
+    iterations = 0
+    while changed and iterations < 10:
         changed = False
-        for p in glob.glob("/proc/[0-9]*"):
-            try:
-                with open(p + "/stat", "r", encoding="utf-8", errors="ignore") as f:
-                    fields = f.read().split()
-                    pid = int(fields[0])
-                    ppid = int(fields[3])
-                    if ppid in descendants and pid not in descendants:
-                        descendants.add(pid)
-                        changed = True
-            except Exception:
-                pass
+        iterations += 1
+        for pid, ppid in parent_map.items():
+            if ppid in descendants and pid not in descendants:
+                descendants.add(pid)
+                changed = True
 
     # Find ttys attached to quickshell or its descendants
     ttys = set()
     for pid in descendants:
-        for fd in glob.glob(f"/proc/{pid}/fd/*"):
-            try:
-                target = os.readlink(fd)
-                if target.startswith("/dev/pts/"):
-                    ttys.add(target)
-            except Exception:
-                pass
+        try:
+            for fd_name in os.listdir(f"/proc/{pid}/fd"):
+                try:
+                    target = os.readlink(f"/proc/{pid}/fd/{fd_name}")
+                    if target.startswith("/dev/pts/"):
+                        ttys.add(target)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
+    # Open with non-blocking mode to avoid hangs on blocked or sleeping PTYs
     for tty in ttys:
         try:
-            with open(tty, "wb", buffering=0) as f:
-                f.write(osc_bytes)
+            fd = os.open(tty, os.O_WRONLY | os.O_NONBLOCK)
+            try:
+                os.write(fd, osc_bytes)
+            finally:
+                os.close(fd)
         except Exception:
             pass
 
@@ -258,15 +289,15 @@ def main():
     # 1. Write theme-specific scheme (e.g. Omaguake_alfa_palette_1a2b3c4d.colorscheme)
     named_content = build_scheme_content(scheme_name, opacity, colors_toml, foot_ini)
     named_file = SCHEMES_DIR / f"{scheme_name}.colorscheme"
-    named_file.write_text(named_content, encoding="utf-8")
+    atomic_write_text(named_file, named_content)
 
     # 2. Write base Omaguake.colorscheme as primary fallback
     base_content = build_scheme_content("Omaguake", opacity, colors_toml, foot_ini)
     base_file = SCHEMES_DIR / "Omaguake.colorscheme"
-    base_file.write_text(base_content, encoding="utf-8")
+    atomic_write_text(base_file, base_content)
 
     # 3. Save current scheme name for QML
-    CURRENT_SCHEME_FILE.write_text(scheme_name, encoding="utf-8")
+    atomic_write_text(CURRENT_SCHEME_FILE, scheme_name)
 
     # 4. Live recolor running PTS sessions
     emit_live_osc_to_ttys(colors_toml)
