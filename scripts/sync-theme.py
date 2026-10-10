@@ -164,6 +164,8 @@ def build_scheme_content(name, opacity, colors_toml, foot_ini):
 def atomic_write_text(path, text):
     """Write text atomically to destination file via a temporary file in the same directory."""
     try:
+        if path.is_file() and path.read_text(encoding="utf-8") == text:
+            return
         temp_path = path.with_suffix(f"{path.suffix}.tmp.{os.getpid()}")
         temp_path.write_text(text, encoding="utf-8")
         temp_path.replace(path)

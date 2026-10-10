@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import QMLTermWidget 2.0
+import "."
 
 Item {
     property QMLTermWidget terminal

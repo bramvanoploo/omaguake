@@ -3,7 +3,7 @@ import QtQuick.Controls
 import Quickshell
 import qs.Commons
 import qs.Ui
-import QMLTermWidget 2.0
+import "QMLTermWidget"
 
 Item {
   id: root

@@ -17,7 +17,7 @@ if [[ ! -f "$MANIFEST_FILE" ]]; then
   exit 1
 fi
 
-VERSION=$(python3 -c "import json; print(json.load(open('$MANIFEST_FILE'))['version'])" 2>/dev/null || echo "0.8.1")
+VERSION=$(python3 -c "import json; print(json.load(open('$MANIFEST_FILE'))['version'])" 2>/dev/null || echo "0.8.5")
 echo "==> Preparing preview banner for Omaguake v$VERSION"
 
 # Capture live screenshots if requested or missing
