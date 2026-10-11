@@ -36,16 +36,6 @@ Item {
     }
   }
 
-  function getForegroundProcess() {
-    try {
-      if (termSession && typeof termSession.foregroundProcessName === "function") {
-        return termSession.foregroundProcessName() || ""
-      } else if (termSession && termSession.foregroundProcessName !== undefined) {
-        return String(termSession.foregroundProcessName || "")
-      }
-    } catch(e) {}
-    return ""
-  }
 
   Process {
     id: paneQueryProc
@@ -277,17 +267,11 @@ Item {
       }
 
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        var fg = root.getForegroundProcess()
-        var isShell = (!fg || fg === "bash" || fg === "sh" || fg === "zsh" || fg === "fish" || fg === "tmux")
-        if (isShell) {
-          var entered = root.typedLine.trim()
-          root.typedLine = ""
-          if (entered.length > 0) {
-            root.lastCommand = entered
-            root.commandUpdated(entered)
-          }
-        } else {
-          root.typedLine = ""
+        var entered = root.typedLine.trim()
+        root.typedLine = ""
+        if (entered.length > 0) {
+          root.lastCommand = entered
+          root.commandUpdated(entered)
         }
       } else if (event.key === Qt.Key_Backspace) {
         if (root.typedLine.length > 0) {

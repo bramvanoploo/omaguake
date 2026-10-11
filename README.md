@@ -11,12 +11,14 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
   - Smooth animated slide-down on summon and slide-up on hide.
   - Automatically hides when focus is lost (clicking outside the terminal window).
 
-- **Tabbed Layout**:
+- **Tabbed Layout & Process Persistence**:
   - Starts with one tab open by default running the user's default Omarchy shell/terminal.
-  - Tabs align to the **left**.
+  - Tabs align to the **left** with active command and directory indicators.
+  - **Persistent Sessions**: Backed by `tmux` under an isolated socket; commands, jobs, and shell states remain alive and survive Quickshell restarts or crashes.
+  - **Auto-Reattach**: Reopens and reconnects to all existing open tabs automatically when Quickshell reloads.
   - Tabs bar is horizontally scrollable to accommodate many open sessions.
   - Pinned **`+`** button on the far right of the tab bar to quickly open new tabs.
-  - Tab close button (`×`) to terminate and close individual sessions.
+  - Tab close button (`×`) to terminate and close individual sessions cleanly.
   - Configurable tab bar position: **Bottom** (Guake style, default) or **Top** (Yakuake style).
 
 - **Summon Triggers**:
@@ -41,6 +43,9 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
 ```bash
 omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
 ```
+
+> [!NOTE]
+> `tmux` is recommended to enable background session persistence and auto-restoration across shell restarts. If `tmux` is not present, Omaguake automatically falls back to running `$SHELL` directly.
 
 ## Uninstall
 
@@ -67,11 +72,15 @@ Right-click the Omaguake bar icon to open the configuration overlay:
 - **Trackpad Gestures**: Toggle 3-finger swipe gestures; alerts if gestures conflict with other settings.
 - **Auto-hide**: Toggle auto-hide on focus loss.
 
-## Third-Party Dependencies
+## Architecture & Third-Party Dependencies
 
 ### [QMLTermWidget](https://github.com/Swordfish90/qmltermwidget)
 - **License**: [GPL-2.0](https://github.com/Swordfish90/qmltermwidget/blob/master/LICENSE)
-- **How it is used**: Omaguake embeds QMLTermWidget to provide native terminal emulation directly inside the Quickshell Qt overlay. Each open tab runs an embedded `QMLTermWidget` and `QMLTermSession` instance providing real pseudo-terminal (PTY) allocation, interactive process lifecycle management, VT100/ANSI terminal sequences, and clipboard integration. Omaguake dynamically generates and hot-reloads custom `.colorscheme` files synced with the active Omarchy system theme and font settings.
+- **How it is used**: Omaguake embeds QMLTermWidget to provide native hardware-accelerated terminal emulation directly inside the Quickshell Qt overlay. It handles PTY allocation, font glyph rendering, VT100/ANSI sequences, selection, and clipboard integration.
+
+### [tmux](https://github.com/tmux/tmux) (Session Backend)
+- **License**: ISC / BSD
+- **How it is used**: Omaguake manages background sessions using an isolated `tmux` socket (`-L omaguake`) with its status bar strictly disabled (`status off`). This preserves running commands, buffers, and tab states across desktop shell crashes and restarts, automatically reconnecting them upon startup.
 
 ## License
 
