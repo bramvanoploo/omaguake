@@ -260,7 +260,7 @@ PopupCard {
         spacing: Style.space(2)
 
         Text {
-          text: "Omaguake Configuration"
+          text: "OmaGuake Configuration"
           font.family: Style.font.family
           font.pixelSize: Style.font.title
           font.bold: true
@@ -489,7 +489,7 @@ PopupCard {
           color: Color.foreground
         }
         Text {
-          text: "Summon or hide Omaguake from anywhere. Not enabled by default."
+          text: "Summon or hide OmaGuake from anywhere. Not enabled by default."
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -905,7 +905,7 @@ PopupCard {
           Button {
             text: "Override & Unbind Conflict"
             fontSize: Style.font.caption
-            tooltipText: "Unbind the existing shortcut and assign to Omaguake"
+            tooltipText: "Unbind the existing shortcut and assign to OmaGuake"
             onClicked: {
               root.applyKeybindingDirectly(root.recordedChord, true)
               root.recordingDialogOpen = false
@@ -1056,7 +1056,7 @@ PopupCard {
             visible: root.customGestureConflict
             text: "Replace Existing Gesture"
             fontSize: Style.font.caption
-            tooltipText: "Disable the existing " + root.candidateGestureFingers + "-finger gesture and assign to Omaguake"
+            tooltipText: "Disable the existing " + root.candidateGestureFingers + "-finger gesture and assign to OmaGuake"
             onClicked: {
               root.applyGesturesDirectly(true, root.candidateGestureFingers, true)
               root.customGesturesDialogOpen = false
@@ -1181,7 +1181,7 @@ PopupCard {
             width: parent.width
             text: "Replace Existing Keybinding (Take Ownership)"
             selected: true
-            tooltipText: "Disables the conflicting binding in Hyprland and assigns CTRL + SPACE to Omaguake"
+            tooltipText: "Disables the conflicting binding in Hyprland and assigns CTRL + SPACE to OmaGuake"
             onClicked: {
               root.keyConflictDialogOpen = false
               root.applyKeybindingDirectly("CTRL + SPACE", true)
@@ -1349,7 +1349,7 @@ PopupCard {
             width: parent.width
             text: "Replace Existing Gestures (3-Finger Swipe Down/Up)"
             selected: true
-            tooltipText: "Disables the conflicting 3-finger gestures and assigns swipe down/up to Omaguake"
+            tooltipText: "Disables the conflicting 3-finger gestures and assigns swipe down/up to OmaGuake"
             onClicked: {
               root.gestureConflictDialogOpen = false
               root.applyGesturesDirectly(true, 3, true)

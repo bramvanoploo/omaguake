@@ -72,7 +72,7 @@ def check_key_conflict(candidate_chord):
     if current_own_chord and norm == current_own_chord:
         return {
             "conflict": False,
-            "message": f"Keybinding '{norm}' is currently assigned to Omaguake."
+            "message": f"Keybinding '{norm}' is currently assigned to OmaGuake."
         }
 
     binds = get_hyprctl_binds()
@@ -317,7 +317,7 @@ def disable_gesture_conflicts_in_configs(target_fingers):
                         return full_match
                     lines = full_match.strip("\n").splitlines()
                     commented = "\n".join("-- " + l for l in lines)
-                    return "\n-- Disabled by Omaguake (replaced with Omaguake gesture)\n" + commented
+                    return "\n-- Disabled by OmaGuake (replaced with OmaGuake gesture)\n" + commented
 
                 parts = re.split(r'(-- BEGIN bramvanoploo\.omaguake.*?-- END bramvanoploo\.omaguake)', content, flags=re.DOTALL)
                 for i in range(len(parts)):
@@ -355,7 +355,7 @@ def disable_key_conflicts_in_configs(chord_norm):
                                 b_chord = m.group(1).strip()
                                 b_norm, b_mods, b_key = normalize_key_chord(b_chord)
                                 if b_key == c_k and b_mods == c_mods:
-                                    new_lines.append("-- Disabled by Omaguake (shortcut replaced)")
+                                    new_lines.append("-- Disabled by OmaGuake (shortcut replaced)")
                                     new_lines.append("-- " + line)
                                     changed = True
                                     continue
@@ -406,12 +406,12 @@ def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_con
     if norm_chord:
         if unbind_conflicts:
             block_lines.append(f'hl.unbind("{norm_chord}")')
-        # dont_inhibit: let this bind fire even while Omaguake's ShortcutInhibitor is active,
+        # dont_inhibit: let this bind fire even while OmaGuake's ShortcutInhibitor is active,
         # so the same chord also closes the panel (and never reaches the terminal / fcitx5).
         block_lines.append(f'hl.bind("{norm_chord}", hl.dsp.global("bramvanoploo.omaguake:toggle"), {{ dont_inhibit = true }})')
         
     if enable_gestures:
-        block_lines.append(f'-- Omaguake Gestures: {gesture_fingers}-finger swipe down to show, swipe up to hide')
+        block_lines.append(f'-- OmaGuake Gestures: {gesture_fingers}-finger swipe down to show, swipe up to hide')
         block_lines.append(f'hl.gesture({{ fingers = {gesture_fingers}, direction = "down", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:show")) end, disable_inhibit = true }})')
         block_lines.append(f'hl.gesture({{ fingers = {gesture_fingers}, direction = "up", action = function() hl.dispatch(hl.dsp.global("bramvanoploo.omaguake:hide")) end, disable_inhibit = true }})')
         
@@ -432,7 +432,7 @@ def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_con
     except Exception:
         pass
         
-    return {"success": True, "message": "Omaguake bindings updated successfully."}
+    return {"success": True, "message": "OmaGuake bindings updated successfully."}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

@@ -395,21 +395,21 @@ Item {
   GlobalShortcut {
     appid: "bramvanoploo.omaguake"
     name: "toggle"
-    description: "Toggle Omaguake dropdown terminal"
+    description: "Toggle OmaGuake dropdown terminal"
     onPressed: root.toggle()
   }
 
   GlobalShortcut {
     appid: "bramvanoploo.omaguake"
     name: "show"
-    description: "Show Omaguake dropdown terminal"
+    description: "Show OmaGuake dropdown terminal"
     onPressed: root.show()
   }
 
   GlobalShortcut {
     appid: "bramvanoploo.omaguake"
     name: "hide"
-    description: "Hide Omaguake dropdown terminal"
+    description: "Hide OmaGuake dropdown terminal"
     onPressed: root.hide()
   }
 
@@ -909,7 +909,7 @@ Item {
           // Settings button
           Button {
             text: "⚙"
-            tooltipText: "Omaguake Settings"
+            tooltipText: "OmaGuake Settings"
             fontSize: Style.font.caption
             onClicked: {
               Quickshell.execDetached(["omarchy-shell", "omaguake.bar", "openSettings"])
@@ -919,7 +919,7 @@ Item {
           // Slide Up / Minimize button
           Button {
             text: "▲"
-            tooltipText: "Hide Omaguake (" + config.keybinding + ")"
+            tooltipText: "Hide OmaGuake (" + config.keybinding + ")"
             fontSize: Style.font.caption
             onClicked: root.hide()
           }

@@ -1,8 +1,8 @@
-# Omaguake (`bramvanoploo.omaguake`)
+# OmaGuake (`bramvanoploo.omaguake`)
 
 An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimicking **Guake** and **Yakuake**.
 
-![Omaguake Drop-down Terminal](preview.png)
+![OmaGuake Drop-down Terminal](preview.png)
 
 ## Features
 
@@ -29,13 +29,13 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
     - *Only enabled if these gestures haven't already been configured.*
 
 - **Smart Conflict Validation**:
-  - When configuring keybindings, Omaguake checks against active Hyprland bindings and Omarchy shortcuts.
+  - When configuring keybindings, OmaGuake checks against active Hyprland bindings and Omarchy shortcuts.
   - If a conflict is detected, the user is **blocked from applying** it, with a clear explanation of what action or application owns the shortcut.
   - Trackpad gestures are checked against existing gestures and 3-finger drag (`drag_3fg`) configurations.
 
 - **Status Bar Integration**:
   - Status bar widget with terminal icon.
-  - **Left-click**: Toggle Omaguake dropdown terminal.
+  - **Left-click**: Toggle OmaGuake dropdown terminal.
   - **Right-click**: Open the plugin configuration overlay.
 
 ## Installation
@@ -45,7 +45,7 @@ omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
 ```
 
 > [!NOTE]
-> `tmux` is recommended to enable background session persistence and auto-restoration across shell restarts. If `tmux` is not present, Omaguake automatically falls back to running `$SHELL` directly.
+> `tmux` is recommended to enable background session persistence and auto-restoration across shell restarts. If `tmux` is not present, OmaGuake automatically falls back to running `$SHELL` directly.
 
 ## Uninstall
 
@@ -64,7 +64,7 @@ omarchy plugin remove bramvanoploo.omaguake
 
 ## Configuration
 
-Right-click the Omaguake bar icon to open the configuration overlay:
+Right-click the OmaGuake bar icon to open the configuration overlay:
 - **Height**: Adjust dropdown panel height (20% – 100%).
 - **Opacity**: Adjust terminal background opacity (20% – 100%) without affecting the tab bar.
 - **Tabs Position**: Choose between Bottom (Guake) or Top (Yakuake).
@@ -76,11 +76,11 @@ Right-click the Omaguake bar icon to open the configuration overlay:
 
 ### [QMLTermWidget](https://github.com/Swordfish90/qmltermwidget)
 - **License**: [GPL-2.0](https://github.com/Swordfish90/qmltermwidget/blob/master/LICENSE)
-- **How it is used**: Omaguake embeds QMLTermWidget to provide native hardware-accelerated terminal emulation directly inside the Quickshell Qt overlay. It handles PTY allocation, font glyph rendering, VT100/ANSI sequences, selection, and clipboard integration.
+- **How it is used**: OmaGuake embeds QMLTermWidget to provide native hardware-accelerated terminal emulation directly inside the Quickshell Qt overlay. It handles PTY allocation, font glyph rendering, VT100/ANSI sequences, selection, and clipboard integration.
 
 ### [tmux](https://github.com/tmux/tmux) (Session Backend)
 - **License**: ISC / BSD
-- **How it is used**: Omaguake manages background sessions using an isolated `tmux` socket (`-L omaguake`) with its status bar strictly disabled (`status off`). This preserves running commands, buffers, and tab states across desktop shell crashes and restarts, automatically reconnecting them upon startup.
+- **How it is used**: OmaGuake manages background sessions using an isolated `tmux` socket (`-L omaguake`) with its status bar strictly disabled (`status off`). This preserves running commands, buffers, and tab states across desktop shell crashes and restarts, automatically reconnecting them upon startup.
 
 ## License
 

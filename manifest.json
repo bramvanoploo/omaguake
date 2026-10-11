@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "bramvanoploo.omaguake",
-  "name": "Omaguake",
+  "name": "OmaGuake",
   "version": "0.9.5",
   "author": "Bram van Oploo",
   "license": "MIT",
@@ -16,7 +16,7 @@
     "overlay": "Overlay.qml"
   },
   "barWidget": {
-    "displayName": "Omaguake",
+    "displayName": "OmaGuake",
     "description": "Guake-style drop-down terminal with tabs and trackpad gestures",
     "category": "Utilities",
     "allowMultiple": false,
