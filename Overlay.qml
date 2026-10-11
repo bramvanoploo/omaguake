@@ -166,8 +166,11 @@ Item {
     root.updateTerminalVisibility()
   }
 
-  function createTab() {
-    var newId = nextTabId++
+  function createTab(specifiedId) {
+    var newId = (specifiedId !== undefined && specifiedId !== null) ? Number(specifiedId) : nextTabId++
+    if (newId >= nextTabId) {
+      nextTabId = newId + 1
+    }
     var term = terminalComponent.createObject(terminalArea, {
       tabId: String(newId),
       schemeName: root.currentSchemeName,
@@ -267,12 +270,15 @@ Item {
   function closeTab(index) {
     if (index < 0 || index >= tabs.length) return
     var tabToClose = tabs[index]
-    if (tabToClose && tabToClose.termItem) {
-      try {
-        tabToClose.termItem.visible = false
-        tabToClose.termItem.activeTab = false
-        tabToClose.termItem.destroy()
-      } catch(e) {}
+    if (tabToClose) {
+      Quickshell.execDetached([root.pluginDir + "/scripts/session-manager.py", "kill", "omaguake_tab_" + tabToClose.id])
+      if (tabToClose.termItem) {
+        try {
+          tabToClose.termItem.visible = false
+          tabToClose.termItem.activeTab = false
+          tabToClose.termItem.destroy()
+        } catch(e) {}
+      }
     }
 
     if (tabs.length <= 1) {
@@ -559,8 +565,36 @@ Item {
     root.notifyTabsRetheme()
   }
 
+  Process {
+    id: sessionRestoreProc
+    command: [root.pluginDir + "/scripts/session-manager.py", "list"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        var restored = false
+        if (raw.length > 0) {
+          try {
+            var list = JSON.parse(raw)
+            if (list && list.length > 0) {
+              for (var i = 0; i < list.length; i++) {
+                var s = list[i]
+                var tid = s.id !== undefined ? s.id : (i + 1)
+                root.createTab(tid)
+              }
+              restored = true
+            }
+          } catch(e) {}
+        }
+        if (!restored && root.tabs.length === 0) {
+          root.createTab()
+        }
+      }
+    }
+  }
+
   Component.onCompleted: {
-    root.createTab()
+    sessionRestoreProc.running = true
     root.reloadTheme()
     root.reloadClipboardBinds()
   }

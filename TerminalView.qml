@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import Quickshell
+import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "QMLTermWidget"
@@ -46,21 +47,43 @@ Item {
     return ""
   }
 
+  Process {
+    id: paneQueryProc
+    command: [root.pluginDir + "/scripts/session-manager.py", "query", "omaguake_tab_" + (root.tabId || "1")]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        if (raw.length > 0) {
+          try {
+            var data = JSON.parse(raw)
+            if (data) {
+              if (data.cwd) {
+                root.titleUpdated(data.cwd)
+              }
+              if (data.command && data.command !== "bash" && data.command !== "sh" && data.command !== "zsh" && data.command !== "fish" && data.command !== "tmux") {
+                if (!root.lastCommand || root.lastCommand !== data.command) {
+                  root.lastCommand = data.command
+                  root.commandUpdated(data.command)
+                }
+              }
+            }
+          } catch(e) {}
+        }
+      }
+    }
+  }
+
   Timer {
     id: procCheckTimer
-    interval: 250
+    interval: 500
     repeat: true
     running: root.activeTab
     onTriggered: {
-      try {
-        var fg = root.getForegroundProcess()
-        if (fg && fg !== "bash" && fg !== "sh" && fg !== "zsh" && fg !== "fish") {
-          if (!root.lastCommand || root.lastCommand.indexOf(fg) !== 0) {
-            root.lastCommand = fg
-            root.commandUpdated(fg)
-          }
-        }
-      } catch(e) {}
+      if (!paneQueryProc.running) {
+        paneQueryProc.command = [root.pluginDir + "/scripts/session-manager.py", "query", "omaguake_tab_" + (root.tabId || "1")]
+        paneQueryProc.running = true
+      }
     }
   }
 
@@ -165,6 +188,8 @@ Item {
     return false
   }
 
+  property string pluginDir: String(Qt.resolvedUrl(".")).replace("file://", "").replace(/\/$/, "")
+
   QMLTermWidget {
     id: terminal
     anchors.fill: parent
@@ -253,7 +278,7 @@ Item {
 
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
         var fg = root.getForegroundProcess()
-        var isShell = (!fg || fg === "bash" || fg === "sh" || fg === "zsh" || fg === "fish")
+        var isShell = (!fg || fg === "bash" || fg === "sh" || fg === "zsh" || fg === "fish" || fg === "tmux")
         if (isShell) {
           var entered = root.typedLine.trim()
           root.typedLine = ""
@@ -279,6 +304,14 @@ Item {
     }
 
     Component.onCompleted: {
+      var wrapperScript = root.pluginDir + "/scripts/tmux-session.sh"
+      var sessionName = "omaguake_tab_" + (root.tabId || "1")
+      if (typeof termSession.setShellProgram === "function") {
+        termSession.setShellProgram(wrapperScript)
+      }
+      if (typeof termSession.setArgs === "function") {
+        termSession.setArgs([sessionName, "attach"])
+      }
       termSession.startShellProgram()
       root.reloadColorScheme(root.schemeName)
       if (root.activeTab) {

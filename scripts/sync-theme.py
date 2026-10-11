@@ -244,6 +244,22 @@ def emit_live_osc_to_ttys(colors_toml):
         except Exception:
             pass
 
+    # Also include any active panes managed by Omaguake tmux server
+    try:
+        tmux_proc = subprocess.run(
+            ["tmux", "-L", "omaguake", "list-panes", "-a", "-F", "#{pane_tty}"],
+            capture_output=True,
+            text=True,
+            timeout=1
+        )
+        if tmux_proc.returncode == 0:
+            for line in tmux_proc.stdout.splitlines():
+                t = line.strip()
+                if t.startswith("/dev/pts/"):
+                    ttys.add(t)
+    except Exception:
+        pass
+
     # Open with non-blocking mode to avoid hangs on blocked or sleeping PTYs
     for tty in ttys:
         try:
