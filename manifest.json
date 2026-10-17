@@ -26,6 +26,7 @@
       "widthPercent": 100,
       "overlayOpacityPercent": 90,
       "tabsPosition": "bottom",
+      "language": "",
       "keybinding": "",
       "gesturesEnabled": false,
       "gestureFingers": 3,
@@ -55,6 +56,12 @@
         "type": "string",
         "label": "Tabs position",
         "description": "Position of the tabs bar ('bottom' for Guake style, 'top' for Yakuake style)."
+      },
+      {
+        "key": "language",
+        "type": "string",
+        "label": "Language",
+        "description": "Interface language (empty for system default)."
       },
       {
         "key": "keybinding",

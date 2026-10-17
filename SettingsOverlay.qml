@@ -18,6 +18,17 @@ PopupCard {
   property int panelWidthPercent: 100
   property int overlayOpacityPercent: 90
   property string tabsPosition: "bottom"
+  property string selectedLanguage: ""
+
+  function tr(key, params) {
+    var _ = selectedLanguage
+    return I18n.t(key, params)
+  }
+
+  onSelectedLanguageChanged: {
+    I18n.setLanguageOverride(selectedLanguage)
+  }
+
   property bool gesturesEnabled: false
   property int gestureFingers: 3
   property bool autoHideOnFocusLoss: true
@@ -43,6 +54,36 @@ PopupCard {
   // Gestures Conflict Dialog state
   property bool gestureConflictDialogOpen: false
 
+  // Language Dialog state
+  property bool languageDialogOpen: false
+
+  readonly property var languageList: [
+    { code: "", label: "System Default (Auto)" },
+    { code: "en", label: "English" },
+    { code: "nl", label: "Nederlands / Vlaams (Dutch)" },
+    { code: "es", label: "Español (Spanish)" },
+    { code: "fr", label: "Français (French)" },
+    { code: "de", label: "Deutsch (German)" },
+    { code: "it", label: "Italiano (Italian)" },
+    { code: "pt", label: "Português (Portuguese)" },
+    { code: "no", label: "Norsk (Norwegian)" },
+    { code: "sv", label: "Svenska (Swedish)" },
+    { code: "fi", label: "Suomi (Finnish)" },
+    { code: "ru", label: "Русский (Russian)" },
+    { code: "hr", label: "Hrvatski (Croatian)" },
+    { code: "zh", label: "中文 (Chinese)" },
+    { code: "ja", label: "日本語 (Japanese)" },
+    { code: "ar", label: "العربية (Arabic)" }
+  ]
+
+  function languageDisplayName(code) {
+    if (!code) return tr("lang_system")
+    for (var i = 0; i < languageList.length; i++) {
+      if (languageList[i].code === code) return languageList[i].label
+    }
+    return code
+  }
+
   // Custom Gestures Dialog state
   property bool customGesturesDialogOpen: false
   property int candidateGestureFingers: 3
@@ -62,6 +103,7 @@ PopupCard {
       customGesturesDialogOpen = false
       keyConflictDialogOpen = false
       gestureConflictDialogOpen = false
+      languageDialogOpen = false
     }
   }
 
@@ -74,6 +116,8 @@ PopupCard {
       widthSlider.value = panelWidthPercent
       opacitySlider.value = overlayOpacityPercent
       tabsPosition = configManager.tabsPosition || "bottom"
+      selectedLanguage = configManager.language || ""
+      I18n.setLanguageOverride(selectedLanguage)
       currentKeybinding = configManager.keybinding || ""
       candidateKeybinding = configManager.keybinding || ""
       gesturesEnabled = configManager.gesturesEnabled || false
@@ -140,6 +184,7 @@ PopupCard {
         widthPercent: panelWidthPercent,
         overlayOpacityPercent: overlayOpacityPercent,
         tabsPosition: tabsPosition,
+        language: selectedLanguage,
         keybinding: currentKeybinding,
         gesturesEnabled: gesturesEnabled,
         gestureFingers: gestureFingers,
@@ -268,7 +313,7 @@ PopupCard {
           spacing: Style.space(8)
 
           Text {
-            text: I18n.t("config_title")
+            text: root.tr("config_title")
             font.family: Style.font.family
             font.pixelSize: Style.font.title
             font.bold: true
@@ -298,7 +343,7 @@ PopupCard {
         }
 
         Text {
-          text: I18n.t("config_subtitle")
+          text: root.tr("config_subtitle")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -320,7 +365,7 @@ PopupCard {
       Row {
         width: parent.width
         Text {
-          text: I18n.t("panel_height", { val: root.panelHeightPercent })
+          text: root.tr("panel_height", { val: root.panelHeightPercent })
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
@@ -394,14 +439,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: I18n.t("panel_width", { val: root.panelWidthPercent })
+          text: root.tr("panel_width", { val: root.panelWidthPercent })
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: I18n.t("panel_width_desc")
+          text: root.tr("panel_width_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -474,14 +519,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: I18n.t("terminal_opacity", { val: root.overlayOpacityPercent })
+          text: root.tr("terminal_opacity", { val: root.overlayOpacityPercent })
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: I18n.t("terminal_opacity_desc")
+          text: root.tr("terminal_opacity_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -554,14 +599,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: I18n.t("tabs_position")
+          text: root.tr("tabs_position")
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: I18n.t("tabs_position_desc")
+          text: root.tr("tabs_position_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -573,26 +618,25 @@ PopupCard {
         spacing: Style.spacing.sm
         Button {
           width: Math.floor((parent.width - Style.spacing.sm) / 2)
-          text: I18n.t("tabs_bottom")
+          text: root.tr("tabs_bottom")
           selected: root.tabsPosition === "bottom"
           onClicked: root.tabsPosition = "bottom"
         }
         Button {
           width: Math.floor((parent.width - Style.spacing.sm) / 2)
-          text: I18n.t("tabs_top")
+          text: root.tr("tabs_top")
           selected: root.tabsPosition === "top"
           onClicked: root.tabsPosition = "top"
         }
       }
     }
-
     Rectangle {
       width: parent.width
       height: 1
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 4. Global Keybinding (Not applied by default, offers suggested & custom recording)
+    // 5. Interface Language Setting
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -600,14 +644,54 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: I18n.t("keybinding_title")
+          text: root.tr("language_title")
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: I18n.t("keybinding_desc")
+          text: root.tr("language_desc")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.muted
+        }
+      }
+
+      Button {
+        id: langSelectorBtn
+        width: parent.width
+        text: "🌐  " + root.languageDisplayName(root.selectedLanguage)
+        fontSize: Style.font.bodySmall
+        onClicked: {
+          root.languageDialogOpen = true
+        }
+      }
+    }
+
+
+    Rectangle {
+      width: parent.width
+      height: 1
+      color: Util.alpha(Color.foreground, 0.08)
+    }
+
+    // 6. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
+    Column {
+      width: parent.width
+      spacing: Style.space(5)
+
+      Column {
+        spacing: Style.space(1)
+        Text {
+          text: root.tr("keybinding_title")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          font.bold: true
+          color: Color.foreground
+        }
+        Text {
+          text: root.tr("keybinding_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -628,15 +712,15 @@ PopupCard {
           id: applySuggestedKeyBtn
           width: keybindBtnRow.actionBtnW
           readonly property bool isSuggestedAssigned: root.currentKeybinding === "CTRL + SPACE"
-          text: isSuggestedAssigned ? I18n.t("assigned_key", { chord: "CTRL + SPACE" }) : I18n.t("apply_suggested_key")
+          text: isSuggestedAssigned ? root.tr("assigned_key", { chord: "CTRL + SPACE" }) : root.tr("apply_suggested_key")
           enabled: !isSuggestedAssigned
           selected: isSuggestedAssigned
           opacity: enabled ? 1.0 : (isSuggestedAssigned ? 0.9 : 0.45)
           tooltipText: isSuggestedAssigned
-            ? I18n.t("key_assigned_tooltip", { chord: "CTRL + SPACE" })
+            ? root.tr("key_assigned_tooltip", { chord: "CTRL + SPACE" })
             : (root.suggestedKeyConflict
-               ? (root.suggestedKeyConflictMessage + " " + I18n.t("click_to_resolve"))
-               : I18n.t("key_suggested_tooltip"))
+               ? (root.suggestedKeyConflictMessage + " " + root.tr("click_to_resolve"))
+               : root.tr("key_suggested_tooltip"))
           onClicked: {
             if (root.suggestedKeyConflict) {
               root.keyConflictDialogOpen = true
@@ -650,11 +734,11 @@ PopupCard {
         Button {
           width: keybindBtnRow.actionBtnW
           readonly property bool isCustomAssigned: !!root.currentKeybinding && root.currentKeybinding !== "CTRL + SPACE"
-          text: isCustomAssigned ? I18n.t("assigned_key", { chord: root.currentKeybinding }) : I18n.t("record_custom_key")
+          text: isCustomAssigned ? root.tr("assigned_key", { chord: root.currentKeybinding }) : root.tr("record_custom_key")
           selected: isCustomAssigned
           tooltipText: isCustomAssigned
-            ? I18n.t("key_record_tooltip", { chord: root.currentKeybinding })
-            : I18n.t("key_record_default_tooltip")
+            ? root.tr("key_record_tooltip", { chord: root.currentKeybinding })
+            : root.tr("key_record_default_tooltip")
           onClicked: {
             root.recordedChord = ""
             root.recordedConflict = false
@@ -673,7 +757,7 @@ PopupCard {
           width: Style.space(38)
           iconText: "\uf1f8"
           iconSize: Style.font.body
-          tooltipText: I18n.t("remove_shortcut_tooltip")
+          tooltipText: root.tr("remove_shortcut_tooltip")
           onClicked: root.applyKeybindingDirectly("", false)
         }
       }
@@ -685,7 +769,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 6. Trackpad Gestures (Not applied by default, offers suggested & custom)
+    // 7. Trackpad Gestures (Not applied by default, offers suggested & custom)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -693,14 +777,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: I18n.t("gestures_title")
+          text: root.tr("gestures_title")
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: I18n.t("gestures_desc")
+          text: root.tr("gestures_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -721,15 +805,15 @@ PopupCard {
           id: applySuggestedGestBtn
           width: gesturesBtnRow.actionBtnW
           readonly property bool isSuggestedGestAssigned: root.gesturesEnabled && root.gestureFingers === 3
-          text: isSuggestedGestAssigned ? I18n.t("assigned_gestures", { fingers: "3" }) : I18n.t("apply_suggested_gestures")
+          text: isSuggestedGestAssigned ? root.tr("assigned_gestures", { fingers: "3" }) : root.tr("apply_suggested_gestures")
           enabled: !isSuggestedGestAssigned
           selected: isSuggestedGestAssigned
           opacity: enabled ? 1.0 : (isSuggestedGestAssigned ? 0.9 : 0.45)
           tooltipText: isSuggestedGestAssigned
-            ? I18n.t("gestures_assigned_tooltip", { fingers: "3" })
+            ? root.tr("gestures_assigned_tooltip", { fingers: "3" })
             : (root.suggestedGestureConflict
-               ? (root.suggestedGestureConflictMessage + " " + I18n.t("click_to_resolve"))
-               : I18n.t("gestures_suggested_tooltip"))
+               ? (root.suggestedGestureConflictMessage + " " + root.tr("click_to_resolve"))
+               : root.tr("gestures_suggested_tooltip"))
           onClicked: {
             if (root.suggestedGestureConflict) {
               root.gestureConflictDialogOpen = true
@@ -743,11 +827,11 @@ PopupCard {
         Button {
           width: gesturesBtnRow.actionBtnW
           readonly property bool isCustomGestAssigned: root.gesturesEnabled && root.gestureFingers !== 3
-          text: isCustomGestAssigned ? I18n.t("assigned_gestures", { fingers: root.gestureFingers }) : I18n.t("custom_gestures")
+          text: isCustomGestAssigned ? root.tr("assigned_gestures", { fingers: root.gestureFingers }) : root.tr("custom_gestures")
           selected: isCustomGestAssigned
           tooltipText: isCustomGestAssigned
-            ? I18n.t("gestures_customize_tooltip", { fingers: root.gestureFingers })
-            : I18n.t("gestures_default_tooltip")
+            ? root.tr("gestures_customize_tooltip", { fingers: root.gestureFingers })
+            : root.tr("gestures_default_tooltip")
           onClicked: {
             root.candidateGestureFingers = root.gestureFingers || 3
             root.checkCustomGesture(root.candidateGestureFingers)
@@ -761,7 +845,7 @@ PopupCard {
           width: Style.space(38)
           iconText: "\uf1f8"
           iconSize: Style.font.body
-          tooltipText: I18n.t("remove_gestures_tooltip")
+          tooltipText: root.tr("remove_gestures_tooltip")
           onClicked: root.applyGesturesDirectly(false, 3)
         }
       }
@@ -773,7 +857,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 7. Focus Behavior
+    // 8. Focus Behavior
     Item {
       width: parent.width
       height: Math.max(autoHideCol.implicitHeight, autoHideToggle.implicitHeight)
@@ -787,14 +871,14 @@ PopupCard {
         spacing: Style.space(1)
 
         Text {
-          text: I18n.t("autohide_title")
+          text: root.tr("autohide_title")
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: I18n.t("autohide_desc")
+          text: root.tr("autohide_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -824,14 +908,14 @@ PopupCard {
       Button {
         id: cancelBtn
         width: Math.max(saveBtn.implicitWidth, Style.space(120))
-        text: I18n.t("cancel")
+        text: root.tr("cancel")
         onClicked: root.close()
       }
 
       Button {
         id: saveBtn
         width: Math.max(implicitWidth, Style.space(120))
-        text: I18n.t("apply")
+        text: root.tr("apply")
         selected: true
         onClicked: root.applyAllAndClose()
       }
@@ -919,7 +1003,7 @@ PopupCard {
         Row {
           width: parent.width
           Text {
-            text: I18n.t("modal_record_title")
+            text: root.tr("modal_record_title")
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             font.bold: true
@@ -949,7 +1033,7 @@ PopupCard {
             }
 
             Text {
-              text: root.recordedChord || I18n.t("modal_record_instructions")
+              text: root.recordedChord || root.tr("modal_record_instructions")
               font.family: Style.font.family
               font.pixelSize: root.recordedChord ? Style.font.heading : Style.font.body
               font.bold: !!root.recordedChord
@@ -985,7 +1069,7 @@ PopupCard {
             Text {
               id: recStatusText
               width: parent.width - 24
-              text: root.isCheckingRecordedKey ? I18n.t("modal_record_verifying") : (root.recordedConflict ? root.recordedConflictMessage : I18n.t("modal_record_available", { chord: root.recordedChord }))
+              text: root.isCheckingRecordedKey ? root.tr("modal_record_verifying") : (root.recordedConflict ? root.recordedConflictMessage : root.tr("modal_record_available", { chord: root.recordedChord }))
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               wrapMode: Text.WordWrap
@@ -1002,7 +1086,7 @@ PopupCard {
           spacing: 6
 
           Text {
-            text: I18n.t("modal_record_alternatives")
+            text: root.tr("modal_record_alternatives")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -1014,7 +1098,7 @@ PopupCard {
             Repeater {
               model: root.recordedSuggestions
               delegate: Button {
-                text: I18n.t("modal_record_use_alt", { chord: modelData })
+                text: root.tr("modal_record_use_alt", { chord: modelData })
                 fontSize: Style.font.caption
                 tooltipText: "Select " + modelData + " as a conflict-free alternative"
                 onClicked: {
@@ -1033,7 +1117,7 @@ PopupCard {
           spacing: 8
 
           Text {
-            text: I18n.t("modal_record_ownership")
+            text: root.tr("modal_record_ownership")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             color: Color.muted
@@ -1041,7 +1125,7 @@ PopupCard {
           }
 
           Button {
-            text: I18n.t("modal_record_override")
+            text: root.tr("modal_record_override")
             fontSize: Style.font.caption
             tooltipText: "Unbind the existing shortcut and assign to OmaGuake"
             onClicked: {
@@ -1059,14 +1143,14 @@ PopupCard {
           Button {
             id: recCancelBtn
             width: Math.max(recApplyBtn.implicitWidth, Style.space(120))
-            text: I18n.t("cancel")
+            text: root.tr("cancel")
             onClicked: root.recordingDialogOpen = false
           }
 
           Button {
             id: recApplyBtn
             width: Math.max(implicitWidth, Style.space(120))
-            text: I18n.t("modal_record_apply")
+            text: root.tr("modal_record_apply")
             selected: true
             enabled: !!root.recordedChord && !root.recordedConflict && !root.isCheckingRecordedKey
             opacity: enabled ? 1.0 : 0.4
@@ -1113,7 +1197,7 @@ PopupCard {
         spacing: Style.space(14)
 
         Text {
-          text: I18n.t("modal_gestures_title")
+          text: root.tr("modal_gestures_title")
           font.family: Style.font.family
           font.pixelSize: Style.font.heading
           font.bold: true
@@ -1121,7 +1205,7 @@ PopupCard {
         }
 
         Text {
-          text: I18n.t("modal_gestures_subtitle")
+          text: root.tr("modal_gestures_subtitle")
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           color: Color.muted
@@ -1133,7 +1217,7 @@ PopupCard {
 
           Button {
             width: Math.floor((parent.width - Style.spacing.sm) / 2)
-            text: I18n.t("modal_gestures_3_fingers")
+            text: root.tr("modal_gestures_3_fingers")
             selected: root.candidateGestureFingers === 3
             onClicked: {
               root.candidateGestureFingers = 3
@@ -1143,7 +1227,7 @@ PopupCard {
 
           Button {
             width: Math.floor((parent.width - Style.spacing.sm) / 2)
-            text: I18n.t("modal_gestures_4_fingers")
+            text: root.tr("modal_gestures_4_fingers")
             selected: root.candidateGestureFingers === 4
             onClicked: {
               root.candidateGestureFingers = 4
@@ -1177,7 +1261,7 @@ PopupCard {
             Text {
               id: gestStatusMsgText
               width: parent.width - 24
-              text: root.customGestureConflict ? root.customGestureConflictMessage : I18n.t("modal_gestures_available", { fingers: root.candidateGestureFingers })
+              text: root.customGestureConflict ? root.customGestureConflictMessage : root.tr("modal_gestures_available", { fingers: root.candidateGestureFingers })
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               wrapMode: Text.WordWrap
@@ -1195,13 +1279,13 @@ PopupCard {
           Button {
             id: gestCancelBtn
             width: Math.max(gestApplyBtn.implicitWidth, Style.space(120))
-            text: I18n.t("cancel")
+            text: root.tr("cancel")
             onClicked: root.customGesturesDialogOpen = false
           }
 
           Button {
             visible: root.customGestureConflict
-            text: I18n.t("modal_gestures_replace")
+            text: root.tr("modal_gestures_replace")
             fontSize: Style.font.caption
             tooltipText: "Disable the existing " + root.candidateGestureFingers + "-finger gesture and assign to OmaGuake"
             onClicked: {
@@ -1214,7 +1298,7 @@ PopupCard {
             id: gestApplyBtn
             width: Math.max(implicitWidth, Style.space(120))
             visible: !root.customGestureConflict
-            text: I18n.t("modal_gestures_apply")
+            text: root.tr("modal_gestures_apply")
             selected: true
             enabled: !root.customGestureConflict
             opacity: enabled ? 1.0 : 0.4
@@ -1282,7 +1366,7 @@ PopupCard {
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
-            text: I18n.t("modal_conflict_key_title")
+            text: root.tr("modal_conflict_key_title")
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             font.bold: true
@@ -1304,7 +1388,7 @@ PopupCard {
             id: keyConflictMsgText
             anchors.fill: parent
             anchors.margins: 8
-            text: root.suggestedKeyConflictMessage || I18n.t("modal_conflict_key_default_msg")
+            text: root.suggestedKeyConflictMessage || root.tr("modal_conflict_key_default_msg")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
@@ -1314,7 +1398,7 @@ PopupCard {
         }
 
         Text {
-          text: I18n.t("modal_how_proceed")
+          text: root.tr("modal_how_proceed")
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           font.bold: true
@@ -1329,7 +1413,7 @@ PopupCard {
           // Option 1: Replace existing keybinding
           Button {
             width: parent.width
-            text: I18n.t("modal_conflict_key_replace")
+            text: root.tr("modal_conflict_key_replace")
             selected: true
             tooltipText: "Disables the conflicting binding in Hyprland and assigns CTRL + SPACE to OmaGuake"
             onClicked: {
@@ -1341,7 +1425,7 @@ PopupCard {
           // Option 2: Record a different keybinding
           Button {
             width: parent.width
-            text: I18n.t("modal_conflict_key_choose_diff")
+            text: root.tr("modal_conflict_key_choose_diff")
             tooltipText: "Record an alternative shortcut such as F12 or CTRL + GRAVE"
             onClicked: {
               root.keyConflictDialogOpen = false
@@ -1361,7 +1445,7 @@ PopupCard {
             visible: root.keySuggestions && root.keySuggestions.length > 0
             spacing: 6
             Text {
-              text: I18n.t("modal_conflict_key_alternatives")
+              text: root.tr("modal_conflict_key_alternatives")
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               color: Color.muted
@@ -1370,7 +1454,7 @@ PopupCard {
             Repeater {
               model: root.keySuggestions
               delegate: Button {
-                text: I18n.t("modal_conflict_key_assign", { chord: modelData })
+                text: root.tr("modal_conflict_key_assign", { chord: modelData })
                 fontSize: Style.font.caption
                 tooltipText: "Use " + modelData + " as shortcut"
                 onClicked: {
@@ -1388,7 +1472,7 @@ PopupCard {
           spacing: Style.spacing.sm
 
           Button {
-            text: I18n.t("modal_cancel")
+            text: root.tr("modal_cancel")
             onClicked: root.keyConflictDialogOpen = false
           }
         }
@@ -1450,7 +1534,7 @@ PopupCard {
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
-            text: I18n.t("modal_conflict_gest_title")
+            text: root.tr("modal_conflict_gest_title")
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             font.bold: true
@@ -1472,7 +1556,7 @@ PopupCard {
             id: gestureConflictMsgText
             anchors.fill: parent
             anchors.margins: 8
-            text: root.suggestedGestureConflictMessage || I18n.t("modal_conflict_gest_default_msg")
+            text: root.suggestedGestureConflictMessage || root.tr("modal_conflict_gest_default_msg")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
@@ -1482,7 +1566,7 @@ PopupCard {
         }
 
         Text {
-          text: I18n.t("modal_how_proceed")
+          text: root.tr("modal_how_proceed")
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           font.bold: true
@@ -1497,7 +1581,7 @@ PopupCard {
           // Option 1: Replace existing gesture
           Button {
             width: parent.width
-            text: I18n.t("modal_conflict_gest_replace")
+            text: root.tr("modal_conflict_gest_replace")
             selected: true
             tooltipText: "Disables the conflicting 3-finger gestures and assigns swipe down/up to OmaGuake"
             onClicked: {
@@ -1509,7 +1593,7 @@ PopupCard {
           // Option 2: Choose 4-finger gestures
           Button {
             width: parent.width
-            text: I18n.t("modal_conflict_gest_4finger")
+            text: root.tr("modal_conflict_gest_4finger")
             tooltipText: "Open Custom Gestures dialog to select 4 fingers"
             onClicked: {
               root.gestureConflictDialogOpen = false
@@ -1526,8 +1610,118 @@ PopupCard {
           spacing: Style.spacing.sm
 
           Button {
-            text: I18n.t("modal_cancel")
+            text: root.tr("modal_cancel")
             onClicked: root.gestureConflictDialogOpen = false
+          }
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // MODAL 5: Language Selection Dialog
+  // =========================================================================
+  Rectangle {
+    id: languageModalScrim
+    visible: root.languageDialogOpen
+    anchors.fill: parent
+    color: Qt.rgba(0, 0, 0, 0.7)
+    radius: Style.cornerRadius
+    z: 110
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: {} // Block clicks outside the dialog
+    }
+
+    Item {
+      anchors.fill: parent
+      focus: root.languageDialogOpen
+
+      Keys.priority: Keys.BeforeItem
+      Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Escape) {
+          root.languageDialogOpen = false
+          event.accepted = true
+        }
+      }
+    }
+
+    Rectangle {
+      width: parent.width - Style.space(32)
+      height: Math.min(parent.height - Style.space(40), langModalCol.implicitHeight + Style.space(32))
+      anchors.centerIn: parent
+      radius: Style.cornerRadius
+      color: Color.background
+      border.color: Color.accent
+      border.width: 1
+
+      Column {
+        id: langModalCol
+        anchors.fill: parent
+        anchors.margins: Style.space(16)
+        spacing: Style.space(12)
+
+        Row {
+          spacing: Style.spacing.sm
+          Text {
+            text: "🌐"
+            font.family: Style.font.family
+            font.pixelSize: Style.font.heading
+            anchors.verticalCenter: parent.verticalCenter
+          }
+          Text {
+            text: root.tr("language_title")
+            font.family: Style.font.family
+            font.pixelSize: Style.font.heading
+            font.bold: true
+            color: Color.foreground
+            anchors.verticalCenter: parent.verticalCenter
+          }
+        }
+
+        Text {
+          text: root.tr("language_desc")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.muted
+          width: parent.width
+          wrapMode: Text.WordWrap
+        }
+
+        ScrollView {
+          width: parent.width
+          height: Style.space(260)
+          clip: true
+
+          ListView {
+            id: langListView
+            anchors.fill: parent
+            spacing: Style.space(4)
+            model: root.languageList
+
+            delegate: Button {
+              width: langListView.width
+              selected: root.selectedLanguage === modelData.code
+              text: (root.selectedLanguage === modelData.code ? "✓  " : "    ") + (modelData.code === "" ? root.tr("lang_system") : modelData.label)
+              fontSize: Style.font.bodySmall
+              leftAlign: true
+              onClicked: {
+                root.selectedLanguage = modelData.code
+                root.languageDialogOpen = false
+              }
+            }
+          }
+        }
+
+        // Footer / Cancel
+        Row {
+          anchors.right: parent.right
+          spacing: Style.spacing.sm
+
+          Button {
+            text: root.tr("cancel")
+            onClicked: root.languageDialogOpen = false
           }
         }
       }

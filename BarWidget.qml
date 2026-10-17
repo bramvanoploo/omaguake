@@ -16,6 +16,13 @@ BarWidget {
     pluginDir: root.pluginDir
   }
 
+  Connections {
+    target: config
+    function onLanguageChanged() {
+      I18n.setLanguageOverride(config.language)
+    }
+  }
+
   property bool settingsOpen: false
 
   implicitWidth: button.implicitWidth
@@ -39,7 +46,10 @@ BarWidget {
     bar: root.bar
     text: "\uf489"
     slotSize: Style.bar.iconSlot
-    tooltipText: I18n.t("bar_tooltip", { chord: config.keybinding ? " (" + config.keybinding + ")" : "" })
+    tooltipText: {
+      var _ = config.language
+      return I18n.t("bar_tooltip", { chord: config.keybinding ? " (" + config.keybinding + ")" : "" })
+    }
 
     onPressed: function(button) {
       if (button === Qt.RightButton) {

@@ -1,9 +1,10 @@
 .pragma library
 
-var currentLang = "";
+var languageOverride = "";
+var detectedLang = "";
 
 function detectLanguage() {
-  if (currentLang) return currentLang;
+  if (detectedLang) return detectedLang;
   try {
     var loc = "";
     if (typeof Qt !== "undefined" && Qt.locale) {
@@ -12,18 +13,33 @@ function detectLanguage() {
     var code = String(loc || "").split(/[_.-]/)[0].toLowerCase();
     if (code === "nb" || code === "nn") code = "no";
     if (translations[code]) {
-      currentLang = code;
+      detectedLang = code;
     } else {
-      currentLang = "en";
+      detectedLang = "en";
     }
   } catch (e) {
-    currentLang = "en";
+    detectedLang = "en";
   }
-  return currentLang;
+  return detectedLang;
+}
+
+function setLanguageOverride(lang) {
+  languageOverride = String(lang || "").trim();
+}
+
+function getLanguageOverride() {
+  return languageOverride;
+}
+
+function getActiveLanguage() {
+  if (languageOverride && translations[languageOverride]) {
+    return languageOverride;
+  }
+  return detectLanguage();
 }
 
 function t(key, params) {
-  var lang = detectLanguage();
+  var lang = getActiveLanguage();
   var dict = translations[lang] || translations["en"];
   var str = (dict && dict[key]) || (translations["en"] && translations["en"][key]) || key;
   if (params) {
@@ -36,6 +52,9 @@ function t(key, params) {
 
 var translations = {
   "en": {
+    "language_title": "Interface Language",
+    "language_desc": "Choose application language or follow system locale",
+    "lang_system": "System Default (Auto)",
     "bar_tooltip": "OmaGuake Dropdown Terminal{chord}\nLeft-click: Toggle · Right-click: Settings",
     "hide_terminal": "Hide OmaGuake ({chord})",
     "open_settings": "OmaGuake Settings",
@@ -107,6 +126,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Use 4-Finger Swipe Gestures Instead…"
   },
   "nl": {
+    "language_title": "Interfacetaal",
+    "language_desc": "Kies de toepassingstaal of volg de systeemtaal",
+    "lang_system": "Systeemstandaard (Auto)",
     "bar_tooltip": "OmaGuake Dropdown Terminal{chord}\nLinksklik: Wisselen · Rechtsklik: Instellingen",
     "hide_terminal": "OmaGuake verbergen ({chord})",
     "open_settings": "OmaGuake-instellingen",
@@ -178,6 +200,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Gebruik in plaats daarvan 4-vingergebaren…"
   },
   "es": {
+    "language_title": "Idioma de la interfaz",
+    "language_desc": "Elige el idioma de la aplicación o sigue el idioma del sistema",
+    "lang_system": "Predeterminado del sistema (Auto)",
     "bar_tooltip": "Terminal desplegable OmaGuake{chord}\nClic izquierdo: Alternar · Clic derecho: Ajustes",
     "hide_terminal": "Ocultar OmaGuake ({chord})",
     "open_settings": "Ajustes de OmaGuake",
@@ -249,6 +274,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Usar gestos de 4 dedos en su lugar…"
   },
   "fr": {
+    "language_title": "Langue de l'interface",
+    "language_desc": "Choisissez la langue de l'application ou suivez la langue du système",
+    "lang_system": "Par défaut du système (Auto)",
     "bar_tooltip": "Terminal déroulant OmaGuake{chord}\nClic gauche : Basculer · Clic droit : Paramètres",
     "hide_terminal": "Masquer OmaGuake ({chord})",
     "open_settings": "Paramètres d'OmaGuake",
@@ -320,6 +348,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Utiliser plutôt des gestes à 4 doigts…"
   },
   "de": {
+    "language_title": "Oberflächensprache",
+    "language_desc": "Wählen Sie die Sprache der Anwendung oder folgen Sie der Systemsprache",
+    "lang_system": "Systemstandard (Auto)",
     "bar_tooltip": "OmaGuake Dropdown-Terminal{chord}\nLinksklick: Umschalten · Rechtsklick: Einstellungen",
     "hide_terminal": "OmaGuake ausblenden ({chord})",
     "open_settings": "OmaGuake-Einstellungen",
@@ -391,6 +422,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Stattdessen 4-Finger-Gesten verwenden…"
   },
   "it": {
+    "language_title": "Lingua dell'interfaccia",
+    "language_desc": "Scegli la lingua dell'applicazione o segui la lingua del sistema",
+    "lang_system": "Predefinito del sistema (Auto)",
     "bar_tooltip": "Terminale a discesa OmaGuake{chord}\nClic sinistro: Attiva/disattiva · Clic destro: Impostazioni",
     "hide_terminal": "Nascondi OmaGuake ({chord})",
     "open_settings": "Impostazioni di OmaGuake",
@@ -462,6 +496,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Usa invece gesti a 4 dita…"
   },
   "pt": {
+    "language_title": "Idioma da interface",
+    "language_desc": "Escolha o idioma do aplicativo ou siga o idioma do sistema",
+    "lang_system": "Padrão do sistema (Auto)",
     "bar_tooltip": "Terminal suspenso OmaGuake{chord}\nClique esquerdo: Alternar · Clique direito: Configurações",
     "hide_terminal": "Ocultar OmaGuake ({chord})",
     "open_settings": "Configurações do OmaGuake",
@@ -533,6 +570,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Usar gestos com 4 dedos em vez disso…"
   },
   "no": {
+    "language_title": "Grensesnittspråk",
+    "language_desc": "Velg applikasjonsspråk eller følg systemspråket",
+    "lang_system": "Systemstandard (Auto)",
     "bar_tooltip": "OmaGuake rullegardinsterminal{chord}\nVenstreklikk: Veksle · Høyreklikk: Innstillinger",
     "hide_terminal": "Skjul OmaGuake ({chord})",
     "open_settings": "OmaGuake-innstillinger",
@@ -604,6 +644,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Bruk 4-fingersveip i stedet…"
   },
   "sv": {
+    "language_title": "Gränssnittsspråk",
+    "language_desc": "Välj applikationsspråk eller följ systemspråket",
+    "lang_system": "Systemstandard (Auto)",
     "bar_tooltip": "OmaGuake rullgardinsterminal{chord}\nVänsterklick: Växla · Högerklick: Inställningar",
     "hide_terminal": "Dölj OmaGuake ({chord})",
     "open_settings": "OmaGuake-inställningar",
@@ -675,6 +718,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Använd 4-fingersvep istället…"
   },
   "fi": {
+    "language_title": "Käyttöliittymän kieli",
+    "language_desc": "Valitse sovelluksen kieli tai noudata järjestelmän kieltä",
+    "lang_system": "Järjestelmän oletus (Auto)",
     "bar_tooltip": "OmaGuake alasvetopääte{chord}\nHiiren vasen: Vaihda · Hiiren oikea: Asetukset",
     "hide_terminal": "Piilota OmaGuake ({chord})",
     "open_settings": "OmaGuaken asetukset",
@@ -746,6 +792,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Käytä sen sijaan 4 sormen pyyhkäisyeleitä…"
   },
   "ru": {
+    "language_title": "Язык интерфейса",
+    "language_desc": "Выберите язык приложения или используйте системный",
+    "lang_system": "Системный по умолчанию (Авто)",
     "bar_tooltip": "Выпадающий терминал OmaGuake{chord}\nЛевый клик: Переключить · Правый клик: Настройки",
     "hide_terminal": "Скрыть OmaGuake ({chord})",
     "open_settings": "Настройки OmaGuake",
@@ -817,6 +866,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Использовать жесты 4 пальцами вместо этого…"
   },
   "hr": {
+    "language_title": "Jezik sučelja",
+    "language_desc": "Odaberite jezik aplikacije ili slijedite jezik sustava",
+    "lang_system": "Zadano u sustavu (Automatski)",
     "bar_tooltip": "OmaGuake padajući terminal{chord}\nLijevi klik: Prebaci · Desni klik: Postavke",
     "hide_terminal": "Sakrij OmaGuake ({chord})",
     "open_settings": "Postavke OmaGuake",
@@ -888,6 +940,9 @@ var translations = {
     "modal_conflict_gest_4finger": "Umjesto toga koristi geste s 4 prsta…"
   },
   "zh": {
+    "language_title": "界面语言",
+    "language_desc": "选择应用程序语言或跟随系统语言",
+    "lang_system": "系统默认（自动）",
     "bar_tooltip": "OmaGuake 下拉终端{chord}\n左键：切换 · 右键：设置",
     "hide_terminal": "隐藏 OmaGuake ({chord})",
     "open_settings": "OmaGuake 设置",
@@ -959,6 +1014,9 @@ var translations = {
     "modal_conflict_gest_4finger": "改用 4 指滑动手势…"
   },
   "ja": {
+    "language_title": "表示言語",
+    "language_desc": "アプリケーションの言語を選択するか、システム言語に従います",
+    "lang_system": "システムデフォルト (自動)",
     "bar_tooltip": "OmaGuake ドロップダウン端末{chord}\n左クリック：切り替え · 右クリック：設定",
     "hide_terminal": "OmaGuake を隠す ({chord})",
     "open_settings": "OmaGuake 設定",
@@ -1030,6 +1088,9 @@ var translations = {
     "modal_conflict_gest_4finger": "代わりに4本指ジェスチャーを使用…"
   },
   "ar": {
+    "language_title": "لغة الواجهة",
+    "language_desc": "اختر لغة التطبيق أو اتبع لغة النظام",
+    "lang_system": "الافتراضي للنظام (تلقائي)",
     "bar_tooltip": "طرفية OmaGuake المنسدلة{chord}\nنقرة يسار: تبديل · نقرة يمين: الإعدادات",
     "hide_terminal": "إخفاء OmaGuake ({chord})",
     "open_settings": "إعدادات OmaGuake",

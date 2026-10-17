@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import "i18n.js" as I18n
 
 QtObject {
   id: root
@@ -16,10 +17,15 @@ QtObject {
   property int widthPercent: 100
   property int overlayOpacityPercent: 90
   property string tabsPosition: "bottom"
+  property string language: ""
   property string keybinding: ""
   property bool gesturesEnabled: false
   property int gestureFingers: 3
   property bool autoHideOnFocusLoss: true
+
+  onLanguageChanged: {
+    I18n.setLanguageOverride(language)
+  }
 
   // System theme opacity tracking (from omasettings.json)
   property real systemActiveOpacity: 0.88
@@ -73,6 +79,10 @@ QtObject {
       if (data.widthPercent !== undefined) widthPercent = parseInt(data.widthPercent, 10) || 100
       if (data.overlayOpacityPercent !== undefined) overlayOpacityPercent = parseInt(data.overlayOpacityPercent, 10) || 90
       if (data.tabsPosition !== undefined) tabsPosition = data.tabsPosition === "top" ? "top" : "bottom"
+      if (data.language !== undefined) {
+        language = String(data.language)
+        I18n.setLanguageOverride(language)
+      }
       if (data.keybinding !== undefined) keybinding = String(data.keybinding)
       if (data.gesturesEnabled !== undefined) gesturesEnabled = data.gesturesEnabled === true
       if (data.gestureFingers !== undefined) gestureFingers = parseInt(data.gestureFingers, 10) || 3
@@ -88,6 +98,8 @@ QtObject {
     widthPercent = 100
     overlayOpacityPercent = 90
     tabsPosition = "bottom"
+    language = ""
+    I18n.setLanguageOverride("")
     keybinding = ""
     gesturesEnabled = false
     gestureFingers = 3
@@ -99,6 +111,10 @@ QtObject {
     if (obj.widthPercent !== undefined) widthPercent = obj.widthPercent
     if (obj.overlayOpacityPercent !== undefined) overlayOpacityPercent = obj.overlayOpacityPercent
     if (obj.tabsPosition !== undefined) tabsPosition = obj.tabsPosition
+    if (obj.language !== undefined) {
+      language = obj.language
+      I18n.setLanguageOverride(language)
+    }
     if (obj.keybinding !== undefined) keybinding = obj.keybinding
     if (obj.gesturesEnabled !== undefined) gesturesEnabled = obj.gesturesEnabled
     if (obj.gestureFingers !== undefined) gestureFingers = obj.gestureFingers
@@ -109,6 +125,7 @@ QtObject {
       widthPercent: widthPercent,
       overlayOpacityPercent: overlayOpacityPercent,
       tabsPosition: tabsPosition,
+      language: language,
       keybinding: keybinding,
       gesturesEnabled: gesturesEnabled,
       gestureFingers: gestureFingers,

@@ -630,6 +630,9 @@ Item {
         }
       }
     }
+    function onLanguageChanged() {
+      I18n.setLanguageOverride(config.language)
+    }
   }
 
   property bool focusPrimed: false
@@ -912,7 +915,7 @@ Item {
           // Settings button
           Button {
             text: "⚙"
-            tooltipText: I18n.t("open_settings")
+            tooltipText: { var _ = config.language; return I18n.t("open_settings") }
             fontSize: Style.font.caption
             onClicked: {
               Quickshell.execDetached(["omarchy-shell", "omaguake.bar", "openSettings"])
@@ -922,7 +925,7 @@ Item {
           // Slide Up / Minimize button
           Button {
             text: "▲"
-            tooltipText: I18n.t("hide_terminal", { chord: config.keybinding || "" })
+            tooltipText: { var _ = config.language; return I18n.t("hide_terminal", { chord: config.keybinding || "" }) }
             fontSize: Style.font.caption
             onClicked: root.hide()
           }
@@ -931,7 +934,7 @@ Item {
           Button {
             id: newTabBtn
             text: "+"
-            tooltipText: I18n.t("open_new_tab")
+            tooltipText: { var _ = config.language; return I18n.t("open_new_tab") }
             fontSize: Style.font.body
             onClicked: root.createTab()
           }
