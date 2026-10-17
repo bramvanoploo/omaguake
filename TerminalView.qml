@@ -190,8 +190,6 @@ Item {
     anchors.fill: parent
     anchors.leftMargin: 20
     anchors.rightMargin: 20
-    anchors.topMargin: 16
-    anchors.bottomMargin: 14
     fillColor: "transparent"
     focus: root.activeTab
     Keys.priority: Keys.BeforeItem
@@ -299,9 +297,6 @@ Item {
     }
 
     Component.onCompleted: {
-      if (typeof terminal.setMargin === "function") {
-        terminal.setMargin(18)
-      }
       var wrapperScript = root.pluginDir + "/scripts/tmux-session.sh"
       var sessionName = "omaguake_tab_" + (root.tabId || "1")
       if (typeof termSession.setKeyBindings === "function") {
@@ -325,9 +320,6 @@ Item {
 
   function refreshTerminal() {
     if (terminal) {
-      if (typeof terminal.setMargin === "function") {
-        terminal.setMargin(18)
-      }
       try {
         if (typeof terminal.updateImage === "function") {
           terminal.updateImage()
