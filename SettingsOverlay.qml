@@ -295,17 +295,19 @@ PopupCard {
     // Header
     Row {
       width: parent.width
-      spacing: Style.spacing.md
+      spacing: Style.space(14)
 
+      // Header icon: sized to span the title + subtitle block
       Text {
         text: "\uf489"
         font.family: Style.font.family
-        font.pixelSize: Style.font.heading
+        font.pixelSize: Math.max(Style.font.heading, Math.round(headerTextCol.implicitHeight))
         color: Color.accent
         anchors.verticalCenter: parent.verticalCenter
       }
 
       Column {
+        id: headerTextCol
         anchors.verticalCenter: parent.verticalCenter
         spacing: Style.space(2)
 
