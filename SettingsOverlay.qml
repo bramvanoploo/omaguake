@@ -356,10 +356,12 @@ PopupCard {
 
         Row {
           id: heightPresetRow
-          spacing: 4
+          spacing: Style.space(4)
           Repeater {
             model: [30, 50, 75, 100]
             delegate: Button {
+              width: Style.space(46)
+              horizontalPadding: 0
               text: modelData + "%"
               fontSize: Style.font.caption
               selected: root.panelHeightPercent === modelData
@@ -434,10 +436,12 @@ PopupCard {
 
         Row {
           id: opacityPresetRow
-          spacing: 4
+          spacing: Style.space(4)
           Repeater {
             model: [50, 75, 90, 100]
             delegate: Button {
+              width: Style.space(46)
+              horizontalPadding: 0
               text: modelData + "%"
               fontSize: Style.font.caption
               selected: root.overlayOpacityPercent === modelData
@@ -480,13 +484,16 @@ PopupCard {
       }
 
       Row {
+        width: parent.width
         spacing: Style.spacing.sm
         Button {
+          width: Math.floor((parent.width - Style.spacing.sm) / 2)
           text: "Bottom (Guake style)"
           selected: root.tabsPosition === "bottom"
           onClicked: root.tabsPosition = "bottom"
         }
         Button {
+          width: Math.floor((parent.width - Style.spacing.sm) / 2)
           text: "Top (Yakuake style)"
           selected: root.tabsPosition === "top"
           onClicked: root.tabsPosition = "top"
@@ -524,11 +531,17 @@ PopupCard {
 
       // Action buttons row
       Row {
+        id: keybindBtnRow
+        width: parent.width
         spacing: Style.spacing.sm
+
+        readonly property real trashW: !!root.currentKeybinding ? (Style.space(38) + Style.spacing.sm) : 0
+        readonly property real actionBtnW: Math.floor((width - trashW - Style.spacing.sm) / 2)
 
         // Suggested Keybinding button
         Button {
           id: applySuggestedKeyBtn
+          width: keybindBtnRow.actionBtnW
           readonly property bool isSuggestedAssigned: root.currentKeybinding === "CTRL + SPACE"
           text: isSuggestedAssigned ? "✓ CTRL + SPACE" : "Apply Suggested (CTRL + SPACE)"
           enabled: !isSuggestedAssigned
@@ -550,6 +563,7 @@ PopupCard {
 
         // Record Custom Keybinding button
         Button {
+          width: keybindBtnRow.actionBtnW
           readonly property bool isCustomAssigned: !!root.currentKeybinding && root.currentKeybinding !== "CTRL + SPACE"
           text: isCustomAssigned ? ("✓ " + root.currentKeybinding) : "Record Custom Shortcut…"
           selected: isCustomAssigned
@@ -571,6 +585,7 @@ PopupCard {
         // Remove shortcut button
         Button {
           visible: !!root.currentKeybinding
+          width: Style.space(38)
           iconText: "\uf1f8"
           iconSize: Style.font.body
           tooltipText: "Remove global shortcut"
@@ -609,11 +624,17 @@ PopupCard {
 
       // Action buttons row
       Row {
+        id: gesturesBtnRow
+        width: parent.width
         spacing: Style.spacing.sm
+
+        readonly property real trashW: root.gesturesEnabled ? (Style.space(38) + Style.spacing.sm) : 0
+        readonly property real actionBtnW: Math.floor((width - trashW - Style.spacing.sm) / 2)
 
         // Suggested Gestures button
         Button {
           id: applySuggestedGestBtn
+          width: gesturesBtnRow.actionBtnW
           readonly property bool isSuggestedGestAssigned: root.gesturesEnabled && root.gestureFingers === 3
           text: isSuggestedGestAssigned ? "✓ 3-Finger Swipe" : "Apply Suggested (3-Finger Swipe)"
           enabled: !isSuggestedGestAssigned
@@ -635,6 +656,7 @@ PopupCard {
 
         // Custom Gestures button
         Button {
+          width: gesturesBtnRow.actionBtnW
           readonly property bool isCustomGestAssigned: root.gesturesEnabled && root.gestureFingers !== 3
           text: isCustomGestAssigned ? ("✓ " + root.gestureFingers + "-Finger Swipe") : "Custom Gestures…"
           selected: isCustomGestAssigned
@@ -651,6 +673,7 @@ PopupCard {
         // Remove gestures button
         Button {
           visible: root.gesturesEnabled
+          width: Style.space(38)
           iconText: "\uf1f8"
           iconSize: Style.font.body
           tooltipText: "Remove touchpad gestures"
@@ -714,11 +737,15 @@ PopupCard {
       spacing: Style.spacing.sm
 
       Button {
+        id: cancelBtn
+        width: Math.max(saveBtn.implicitWidth, Style.space(120))
         text: "Cancel"
         onClicked: root.close()
       }
 
       Button {
+        id: saveBtn
+        width: Math.max(implicitWidth, Style.space(120))
         text: "Apply & Save"
         selected: true
         onClicked: root.applyAllAndClose()
@@ -945,11 +972,15 @@ PopupCard {
           spacing: Style.spacing.sm
 
           Button {
+            id: recCancelBtn
+            width: Math.max(recApplyBtn.implicitWidth, Style.space(120))
             text: "Cancel"
             onClicked: root.recordingDialogOpen = false
           }
 
           Button {
+            id: recApplyBtn
+            width: Math.max(implicitWidth, Style.space(120))
             text: "Apply This Shortcut"
             selected: true
             enabled: !!root.recordedChord && !root.recordedConflict && !root.isCheckingRecordedKey
@@ -1012,9 +1043,11 @@ PopupCard {
         }
 
         Row {
+          width: parent.width
           spacing: Style.spacing.sm
 
           Button {
+            width: Math.floor((parent.width - Style.spacing.sm) / 2)
             text: "3 Fingers (Guake Standard)"
             selected: root.candidateGestureFingers === 3
             onClicked: {
@@ -1024,6 +1057,7 @@ PopupCard {
           }
 
           Button {
+            width: Math.floor((parent.width - Style.spacing.sm) / 2)
             text: "4 Fingers"
             selected: root.candidateGestureFingers === 4
             onClicked: {
@@ -1074,6 +1108,8 @@ PopupCard {
           spacing: Style.spacing.sm
 
           Button {
+            id: gestCancelBtn
+            width: Math.max(gestApplyBtn.implicitWidth, Style.space(120))
             text: "Cancel"
             onClicked: root.customGesturesDialogOpen = false
           }
@@ -1090,6 +1126,9 @@ PopupCard {
           }
 
           Button {
+            id: gestApplyBtn
+            width: Math.max(implicitWidth, Style.space(120))
+            visible: !root.customGestureConflict
             text: "Apply Gestures"
             selected: true
             enabled: !root.customGestureConflict
