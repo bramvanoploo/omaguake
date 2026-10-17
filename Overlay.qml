@@ -666,6 +666,8 @@ Item {
     anchors { top: true; left: true; right: true }
     margins {
       top: Style.bar.sizeHorizontal
+      left: panelWindow.sideMargin
+      right: panelWindow.sideMargin
     }
     color: "transparent"
     surfaceFormat.opaque: false
@@ -673,15 +675,16 @@ Item {
     readonly property real screenW: screen ? screen.width : 1920
     readonly property real screenH: screen ? screen.height : 1080
     readonly property real panelH: Math.round(screenH * (config.heightPercent / 100.0))
-    readonly property real panelW: Math.round((panelWindow.width > 0 ? panelWindow.width : screenW) * (Math.max(20, Math.min(100, config.widthPercent !== undefined ? config.widthPercent : 100)) / 100.0))
+    readonly property real panelW: Math.round(screenW * (Math.max(20, Math.min(100, config.widthPercent !== undefined ? config.widthPercent : 100)) / 100.0))
+    readonly property int sideMargin: Math.max(0, Math.round((screenW - panelW) / 2))
 
     implicitHeight: panelH
-    implicitWidth: screenW
+    implicitWidth: panelW
 
     mask: Region {
-      x: Math.round((panelWindow.width - panelWindow.panelW) / 2)
+      x: 0
       y: 0
-      width: panelWindow.panelW
+      width: panelWindow.width
       height: Math.max(0, Math.round(panelWindow.panelH * root.slideProgress))
     }
 
@@ -712,8 +715,7 @@ Item {
     // Sliding container item
     Item {
       id: container
-      width: panelWindow.panelW
-      x: Math.round((parent.width - width) / 2)
+      width: parent.width
       height: parent.height
       y: (root.slideProgress - 1.0) * parent.height
       opacity: Math.max(0.01, root.slideProgress)
