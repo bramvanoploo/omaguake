@@ -630,45 +630,6 @@ PopupCard {
         }
       }
     }
-    Rectangle {
-      width: parent.width
-      height: 1
-      color: Util.alpha(Color.foreground, 0.08)
-    }
-
-    // 5. Interface Language Setting
-    Column {
-      width: parent.width
-      spacing: Style.space(5)
-
-      Column {
-        spacing: Style.space(1)
-        Text {
-          text: root.tr("language_title")
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
-          font.bold: true
-          color: Color.foreground
-        }
-        Text {
-          text: root.tr("language_desc")
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          color: Color.muted
-        }
-      }
-
-      Button {
-        id: langSelectorBtn
-        width: parent.width
-        text: "🌐  " + root.languageDisplayName(root.selectedLanguage)
-        fontSize: Style.font.bodySmall
-        onClicked: {
-          root.languageDialogOpen = true
-        }
-      }
-    }
-
 
     Rectangle {
       width: parent.width
@@ -676,7 +637,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 6. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
+    // 5. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -769,7 +730,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 7. Trackpad Gestures (Not applied by default, offers suggested & custom)
+    // 6. Trackpad Gestures (Not applied by default, offers suggested & custom)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -857,7 +818,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 8. Focus Behavior
+    // 7. Focus Behavior
     Item {
       width: parent.width
       height: Math.max(autoHideCol.implicitHeight, autoHideToggle.implicitHeight)
@@ -891,6 +852,45 @@ PopupCard {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         onToggled: root.autoHideOnFocusLoss = !root.autoHideOnFocusLoss
+      }
+    }
+
+    Rectangle {
+      width: parent.width
+      height: 1
+      color: Util.alpha(Color.foreground, 0.08)
+    }
+
+    // 8. Interface Language Setting (All the way at the bottom)
+    Column {
+      width: parent.width
+      spacing: Style.space(5)
+
+      Column {
+        spacing: Style.space(1)
+        Text {
+          text: root.tr("language_title")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          font.bold: true
+          color: Color.foreground
+        }
+        Text {
+          text: root.tr("language_desc")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.muted
+        }
+      }
+
+      Button {
+        id: langSelectorBtn
+        width: parent.width
+        text: "🌐  " + root.languageDisplayName(root.selectedLanguage)
+        fontSize: Style.font.bodySmall
+        onClicked: {
+          root.languageDialogOpen = true
+        }
       }
     }
 
