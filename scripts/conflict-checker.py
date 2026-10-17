@@ -401,7 +401,7 @@ def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_con
     block_lines = [
         "",
         "-- BEGIN bramvanoploo.omaguake",
-        'hl.layer_rule({ match = { namespace = "omaguake" }, blur = true, no_anim = true, animation = "none" })',
+        'hl.layer_rule({ match = { namespace = "omaguake" }, blur = true, ignore_alpha = 0.2, no_anim = true, animation = "none" })',
     ]
     if norm_chord:
         if unbind_conflicts:
