@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "i18n.js" as I18n
 
 PopupCard {
   id: root
@@ -267,7 +268,7 @@ PopupCard {
           spacing: Style.space(8)
 
           Text {
-            text: "OmaGuake Configuration"
+            text: I18n.t("config_title")
             font.family: Style.font.family
             font.pixelSize: Style.font.title
             font.bold: true
@@ -297,7 +298,7 @@ PopupCard {
         }
 
         Text {
-          text: "Custom drop-down terminal overlay preferences & bindings"
+          text: I18n.t("config_subtitle")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -319,7 +320,7 @@ PopupCard {
       Row {
         width: parent.width
         Text {
-          text: "Overlay Panel Height: " + root.panelHeightPercent + "%"
+          text: I18n.t("panel_height", { val: root.panelHeightPercent })
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
@@ -393,14 +394,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: "Overlay Panel Width: " + root.panelWidthPercent + "%"
+          text: I18n.t("panel_width", { val: root.panelWidthPercent })
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: "Width of the drop-down terminal overlay (horizontally centered, default 100%)"
+          text: I18n.t("panel_width_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -473,14 +474,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: "Terminal Opacity: " + root.overlayOpacityPercent + "%"
+          text: I18n.t("terminal_opacity", { val: root.overlayOpacityPercent })
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: "Adjust terminal background translucency (desktop blur shows through; tab bar remains solid)"
+          text: I18n.t("terminal_opacity_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -553,14 +554,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: "Tab Bar Position"
+          text: I18n.t("tabs_position")
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: "Tabs align to the left with a scrollable strip and pinned '+' button"
+          text: I18n.t("tabs_position_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -572,13 +573,13 @@ PopupCard {
         spacing: Style.spacing.sm
         Button {
           width: Math.floor((parent.width - Style.spacing.sm) / 2)
-          text: "Bottom (Guake style)"
+          text: I18n.t("tabs_bottom")
           selected: root.tabsPosition === "bottom"
           onClicked: root.tabsPosition = "bottom"
         }
         Button {
           width: Math.floor((parent.width - Style.spacing.sm) / 2)
-          text: "Top (Yakuake style)"
+          text: I18n.t("tabs_top")
           selected: root.tabsPosition === "top"
           onClicked: root.tabsPosition = "top"
         }
@@ -599,14 +600,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: "Global Shortcut Keybinding"
+          text: I18n.t("keybinding_title")
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: "Summon or hide OmaGuake from anywhere. Not enabled by default."
+          text: I18n.t("keybinding_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -627,15 +628,15 @@ PopupCard {
           id: applySuggestedKeyBtn
           width: keybindBtnRow.actionBtnW
           readonly property bool isSuggestedAssigned: root.currentKeybinding === "CTRL + SPACE"
-          text: isSuggestedAssigned ? "✓ CTRL + SPACE" : "Apply Suggested (CTRL + SPACE)"
+          text: isSuggestedAssigned ? I18n.t("assigned_key", { chord: "CTRL + SPACE" }) : I18n.t("apply_suggested_key")
           enabled: !isSuggestedAssigned
           selected: isSuggestedAssigned
           opacity: enabled ? 1.0 : (isSuggestedAssigned ? 0.9 : 0.45)
           tooltipText: isSuggestedAssigned
-            ? "CTRL + SPACE is currently assigned"
+            ? I18n.t("key_assigned_tooltip", { chord: "CTRL + SPACE" })
             : (root.suggestedKeyConflict
-               ? (root.suggestedKeyConflictMessage + " Click to resolve options.")
-               : "Apply suggested shortcut (CTRL + SPACE)")
+               ? (root.suggestedKeyConflictMessage + " " + I18n.t("click_to_resolve"))
+               : I18n.t("key_suggested_tooltip"))
           onClicked: {
             if (root.suggestedKeyConflict) {
               root.keyConflictDialogOpen = true
@@ -649,11 +650,11 @@ PopupCard {
         Button {
           width: keybindBtnRow.actionBtnW
           readonly property bool isCustomAssigned: !!root.currentKeybinding && root.currentKeybinding !== "CTRL + SPACE"
-          text: isCustomAssigned ? ("✓ " + root.currentKeybinding) : "Record Custom Shortcut…"
+          text: isCustomAssigned ? I18n.t("assigned_key", { chord: root.currentKeybinding }) : I18n.t("record_custom_key")
           selected: isCustomAssigned
           tooltipText: isCustomAssigned
-            ? (root.currentKeybinding + " is currently assigned. Click to record a different shortcut.")
-            : "Record any keyboard shortcut with automatic conflict resolution"
+            ? I18n.t("key_record_tooltip", { chord: root.currentKeybinding })
+            : I18n.t("key_record_default_tooltip")
           onClicked: {
             root.recordedChord = ""
             root.recordedConflict = false
@@ -672,7 +673,7 @@ PopupCard {
           width: Style.space(38)
           iconText: "\uf1f8"
           iconSize: Style.font.body
-          tooltipText: "Remove global shortcut"
+          tooltipText: I18n.t("remove_shortcut_tooltip")
           onClicked: root.applyKeybindingDirectly("", false)
         }
       }
@@ -692,14 +693,14 @@ PopupCard {
       Column {
         spacing: Style.space(1)
         Text {
-          text: "Trackpad Gestures"
+          text: I18n.t("gestures_title")
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: "Touchpad swipe gestures to show and hide. Not enabled by default."
+          text: I18n.t("gestures_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -720,15 +721,15 @@ PopupCard {
           id: applySuggestedGestBtn
           width: gesturesBtnRow.actionBtnW
           readonly property bool isSuggestedGestAssigned: root.gesturesEnabled && root.gestureFingers === 3
-          text: isSuggestedGestAssigned ? "✓ 3-Finger Swipe" : "Apply Suggested (3-Finger Swipe)"
+          text: isSuggestedGestAssigned ? I18n.t("assigned_gestures", { fingers: "3" }) : I18n.t("apply_suggested_gestures")
           enabled: !isSuggestedGestAssigned
           selected: isSuggestedGestAssigned
           opacity: enabled ? 1.0 : (isSuggestedGestAssigned ? 0.9 : 0.45)
           tooltipText: isSuggestedGestAssigned
-            ? "3-finger gestures are enabled"
+            ? I18n.t("gestures_assigned_tooltip", { fingers: "3" })
             : (root.suggestedGestureConflict
-               ? (root.suggestedGestureConflictMessage + " Click to resolve options.")
-               : "Enable 3-finger swipe down to show, swipe up to hide")
+               ? (root.suggestedGestureConflictMessage + " " + I18n.t("click_to_resolve"))
+               : I18n.t("gestures_suggested_tooltip"))
           onClicked: {
             if (root.suggestedGestureConflict) {
               root.gestureConflictDialogOpen = true
@@ -742,11 +743,11 @@ PopupCard {
         Button {
           width: gesturesBtnRow.actionBtnW
           readonly property bool isCustomGestAssigned: root.gesturesEnabled && root.gestureFingers !== 3
-          text: isCustomGestAssigned ? ("✓ " + root.gestureFingers + "-Finger Swipe") : "Custom Gestures…"
+          text: isCustomGestAssigned ? I18n.t("assigned_gestures", { fingers: root.gestureFingers }) : I18n.t("custom_gestures")
           selected: isCustomGestAssigned
           tooltipText: isCustomGestAssigned
-            ? (root.gestureFingers + "-finger gestures are enabled. Click to customize.")
-            : "Select 3-finger or 4-finger gestures with conflict checking"
+            ? I18n.t("gestures_customize_tooltip", { fingers: root.gestureFingers })
+            : I18n.t("gestures_default_tooltip")
           onClicked: {
             root.candidateGestureFingers = root.gestureFingers || 3
             root.checkCustomGesture(root.candidateGestureFingers)
@@ -760,7 +761,7 @@ PopupCard {
           width: Style.space(38)
           iconText: "\uf1f8"
           iconSize: Style.font.body
-          tooltipText: "Remove touchpad gestures"
+          tooltipText: I18n.t("remove_gestures_tooltip")
           onClicked: root.applyGesturesDirectly(false, 3)
         }
       }
@@ -786,14 +787,14 @@ PopupCard {
         spacing: Style.space(1)
 
         Text {
-          text: "Auto-hide on Focus Loss"
+          text: I18n.t("autohide_title")
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
           color: Color.foreground
         }
         Text {
-          text: "Automatically slide up and hide when clicking outside the overlay"
+          text: I18n.t("autohide_desc")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           color: Color.muted
@@ -823,14 +824,14 @@ PopupCard {
       Button {
         id: cancelBtn
         width: Math.max(saveBtn.implicitWidth, Style.space(120))
-        text: "Cancel"
+        text: I18n.t("cancel")
         onClicked: root.close()
       }
 
       Button {
         id: saveBtn
         width: Math.max(implicitWidth, Style.space(120))
-        text: "Apply & Save"
+        text: I18n.t("apply")
         selected: true
         onClicked: root.applyAllAndClose()
       }
@@ -918,7 +919,7 @@ PopupCard {
         Row {
           width: parent.width
           Text {
-            text: "Record Custom Keybinding"
+            text: I18n.t("modal_record_title")
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             font.bold: true
@@ -948,7 +949,7 @@ PopupCard {
             }
 
             Text {
-              text: root.recordedChord || "Press key combination on keyboard (e.g. F12, ALT + SPACE)…"
+              text: root.recordedChord || I18n.t("modal_record_instructions")
               font.family: Style.font.family
               font.pixelSize: root.recordedChord ? Style.font.heading : Style.font.body
               font.bold: !!root.recordedChord
@@ -984,7 +985,7 @@ PopupCard {
             Text {
               id: recStatusText
               width: parent.width - 24
-              text: root.isCheckingRecordedKey ? "Verifying availability in Hyprland…" : (root.recordedConflict ? root.recordedConflictMessage : (root.recordedChord + " is available!"))
+              text: root.isCheckingRecordedKey ? I18n.t("modal_record_verifying") : (root.recordedConflict ? root.recordedConflictMessage : I18n.t("modal_record_available", { chord: root.recordedChord }))
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               wrapMode: Text.WordWrap
@@ -1001,7 +1002,7 @@ PopupCard {
           spacing: 6
 
           Text {
-            text: "Automatic Conflict Resolution — Available alternatives:"
+            text: I18n.t("modal_record_alternatives")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
@@ -1013,7 +1014,7 @@ PopupCard {
             Repeater {
               model: root.recordedSuggestions
               delegate: Button {
-                text: "Use " + modelData
+                text: I18n.t("modal_record_use_alt", { chord: modelData })
                 fontSize: Style.font.caption
                 tooltipText: "Select " + modelData + " as a conflict-free alternative"
                 onClicked: {
@@ -1032,7 +1033,7 @@ PopupCard {
           spacing: 8
 
           Text {
-            text: "Or take ownership:"
+            text: I18n.t("modal_record_ownership")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             color: Color.muted
@@ -1040,7 +1041,7 @@ PopupCard {
           }
 
           Button {
-            text: "Override & Unbind Conflict"
+            text: I18n.t("modal_record_override")
             fontSize: Style.font.caption
             tooltipText: "Unbind the existing shortcut and assign to OmaGuake"
             onClicked: {
@@ -1058,14 +1059,14 @@ PopupCard {
           Button {
             id: recCancelBtn
             width: Math.max(recApplyBtn.implicitWidth, Style.space(120))
-            text: "Cancel"
+            text: I18n.t("cancel")
             onClicked: root.recordingDialogOpen = false
           }
 
           Button {
             id: recApplyBtn
             width: Math.max(implicitWidth, Style.space(120))
-            text: "Apply This Shortcut"
+            text: I18n.t("modal_record_apply")
             selected: true
             enabled: !!root.recordedChord && !root.recordedConflict && !root.isCheckingRecordedKey
             opacity: enabled ? 1.0 : 0.4
@@ -1112,7 +1113,7 @@ PopupCard {
         spacing: Style.space(14)
 
         Text {
-          text: "Configure Touchpad Gestures"
+          text: I18n.t("modal_gestures_title")
           font.family: Style.font.family
           font.pixelSize: Style.font.heading
           font.bold: true
@@ -1120,7 +1121,7 @@ PopupCard {
         }
 
         Text {
-          text: "Choose how many fingers to use for vertical swipe show/hide gestures:"
+          text: I18n.t("modal_gestures_subtitle")
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           color: Color.muted
@@ -1132,7 +1133,7 @@ PopupCard {
 
           Button {
             width: Math.floor((parent.width - Style.spacing.sm) / 2)
-            text: "3 Fingers (Guake Standard)"
+            text: I18n.t("modal_gestures_3_fingers")
             selected: root.candidateGestureFingers === 3
             onClicked: {
               root.candidateGestureFingers = 3
@@ -1142,7 +1143,7 @@ PopupCard {
 
           Button {
             width: Math.floor((parent.width - Style.spacing.sm) / 2)
-            text: "4 Fingers"
+            text: I18n.t("modal_gestures_4_fingers")
             selected: root.candidateGestureFingers === 4
             onClicked: {
               root.candidateGestureFingers = 4
@@ -1176,7 +1177,7 @@ PopupCard {
             Text {
               id: gestStatusMsgText
               width: parent.width - 24
-              text: root.customGestureConflict ? root.customGestureConflictMessage : (root.candidateGestureFingers + "-finger swipe gestures are available!")
+              text: root.customGestureConflict ? root.customGestureConflictMessage : I18n.t("modal_gestures_available", { fingers: root.candidateGestureFingers })
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               wrapMode: Text.WordWrap
@@ -1194,13 +1195,13 @@ PopupCard {
           Button {
             id: gestCancelBtn
             width: Math.max(gestApplyBtn.implicitWidth, Style.space(120))
-            text: "Cancel"
+            text: I18n.t("cancel")
             onClicked: root.customGesturesDialogOpen = false
           }
 
           Button {
             visible: root.customGestureConflict
-            text: "Replace Existing Gesture"
+            text: I18n.t("modal_gestures_replace")
             fontSize: Style.font.caption
             tooltipText: "Disable the existing " + root.candidateGestureFingers + "-finger gesture and assign to OmaGuake"
             onClicked: {
@@ -1213,7 +1214,7 @@ PopupCard {
             id: gestApplyBtn
             width: Math.max(implicitWidth, Style.space(120))
             visible: !root.customGestureConflict
-            text: "Apply Gestures"
+            text: I18n.t("modal_gestures_apply")
             selected: true
             enabled: !root.customGestureConflict
             opacity: enabled ? 1.0 : 0.4
@@ -1281,7 +1282,7 @@ PopupCard {
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
-            text: "Keybinding Conflict Detected"
+            text: I18n.t("modal_conflict_key_title")
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             font.bold: true
@@ -1303,7 +1304,7 @@ PopupCard {
             id: keyConflictMsgText
             anchors.fill: parent
             anchors.margins: 8
-            text: root.suggestedKeyConflictMessage || "The suggested shortcut 'CTRL + SPACE' is already assigned in your system."
+            text: root.suggestedKeyConflictMessage || I18n.t("modal_conflict_key_default_msg")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
@@ -1313,7 +1314,7 @@ PopupCard {
         }
 
         Text {
-          text: "How would you like to proceed?"
+          text: I18n.t("modal_how_proceed")
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           font.bold: true
@@ -1328,7 +1329,7 @@ PopupCard {
           // Option 1: Replace existing keybinding
           Button {
             width: parent.width
-            text: "Replace Existing Keybinding (Take Ownership)"
+            text: I18n.t("modal_conflict_key_replace")
             selected: true
             tooltipText: "Disables the conflicting binding in Hyprland and assigns CTRL + SPACE to OmaGuake"
             onClicked: {
@@ -1340,7 +1341,7 @@ PopupCard {
           // Option 2: Record a different keybinding
           Button {
             width: parent.width
-            text: "Choose a Different Keybinding (Record Input)…"
+            text: I18n.t("modal_conflict_key_choose_diff")
             tooltipText: "Record an alternative shortcut such as F12 or CTRL + GRAVE"
             onClicked: {
               root.keyConflictDialogOpen = false
@@ -1360,7 +1361,7 @@ PopupCard {
             visible: root.keySuggestions && root.keySuggestions.length > 0
             spacing: 6
             Text {
-              text: "Suggested alternatives:"
+              text: I18n.t("modal_conflict_key_alternatives")
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               color: Color.muted
@@ -1369,7 +1370,7 @@ PopupCard {
             Repeater {
               model: root.keySuggestions
               delegate: Button {
-                text: modelData
+                text: I18n.t("modal_conflict_key_assign", { chord: modelData })
                 fontSize: Style.font.caption
                 tooltipText: "Use " + modelData + " as shortcut"
                 onClicked: {
@@ -1387,7 +1388,7 @@ PopupCard {
           spacing: Style.spacing.sm
 
           Button {
-            text: "Do Nothing (Cancel)"
+            text: I18n.t("modal_cancel")
             onClicked: root.keyConflictDialogOpen = false
           }
         }
@@ -1449,7 +1450,7 @@ PopupCard {
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
-            text: "Trackpad Gesture Conflict Detected"
+            text: I18n.t("modal_conflict_gest_title")
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             font.bold: true
@@ -1471,7 +1472,7 @@ PopupCard {
             id: gestureConflictMsgText
             anchors.fill: parent
             anchors.margins: 8
-            text: root.suggestedGestureConflictMessage || "A 3-finger swipe gesture is already configured on your system."
+            text: root.suggestedGestureConflictMessage || I18n.t("modal_conflict_gest_default_msg")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
@@ -1481,7 +1482,7 @@ PopupCard {
         }
 
         Text {
-          text: "How would you like to proceed?"
+          text: I18n.t("modal_how_proceed")
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           font.bold: true
@@ -1496,7 +1497,7 @@ PopupCard {
           // Option 1: Replace existing gesture
           Button {
             width: parent.width
-            text: "Replace Existing Gestures (3-Finger Swipe Down/Up)"
+            text: I18n.t("modal_conflict_gest_replace")
             selected: true
             tooltipText: "Disables the conflicting 3-finger gestures and assigns swipe down/up to OmaGuake"
             onClicked: {
@@ -1508,7 +1509,7 @@ PopupCard {
           // Option 2: Choose 4-finger gestures
           Button {
             width: parent.width
-            text: "Use 4-Finger Swipe Gestures Instead…"
+            text: I18n.t("modal_conflict_gest_4finger")
             tooltipText: "Open Custom Gestures dialog to select 4 fingers"
             onClicked: {
               root.gestureConflictDialogOpen = false
@@ -1525,7 +1526,7 @@ PopupCard {
           spacing: Style.spacing.sm
 
           Button {
-            text: "Do Nothing (Cancel)"
+            text: I18n.t("modal_cancel")
             onClicked: root.gestureConflictDialogOpen = false
           }
         }

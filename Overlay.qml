@@ -7,6 +7,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "i18n.js" as I18n
 
 Item {
   id: root
@@ -911,7 +912,7 @@ Item {
           // Settings button
           Button {
             text: "⚙"
-            tooltipText: "OmaGuake Settings"
+            tooltipText: I18n.t("open_settings")
             fontSize: Style.font.caption
             onClicked: {
               Quickshell.execDetached(["omarchy-shell", "omaguake.bar", "openSettings"])
@@ -921,7 +922,7 @@ Item {
           // Slide Up / Minimize button
           Button {
             text: "▲"
-            tooltipText: "Hide OmaGuake (" + config.keybinding + ")"
+            tooltipText: I18n.t("hide_terminal", { chord: config.keybinding || "" })
             fontSize: Style.font.caption
             onClicked: root.hide()
           }
@@ -930,7 +931,7 @@ Item {
           Button {
             id: newTabBtn
             text: "+"
-            tooltipText: "Open new terminal tab"
+            tooltipText: I18n.t("open_new_tab")
             fontSize: Style.font.body
             onClicked: root.createTab()
           }

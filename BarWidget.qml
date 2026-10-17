@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "i18n.js" as I18n
 
 BarWidget {
   id: root
@@ -38,7 +39,7 @@ BarWidget {
     bar: root.bar
     text: "\uf489"
     slotSize: Style.bar.iconSlot
-    tooltipText: "OmaGuake Dropdown Terminal" + (config.keybinding ? " (" + config.keybinding + ")" : "") + "\nLeft-click: Toggle · Right-click: Settings"
+    tooltipText: I18n.t("bar_tooltip", { chord: config.keybinding ? " (" + config.keybinding + ")" : "" })
 
     onPressed: function(button) {
       if (button === Qt.RightButton) {
