@@ -296,7 +296,7 @@ Item {
 
     Component.onCompleted: {
       if (typeof terminal.setMargin === "function") {
-        terminal.setMargin(12)
+        terminal.setMargin(18)
       }
       var wrapperScript = root.pluginDir + "/scripts/tmux-session.sh"
       var sessionName = "omaguake_tab_" + (root.tabId || "1")
@@ -321,6 +321,9 @@ Item {
 
   function refreshTerminal() {
     if (terminal) {
+      if (typeof terminal.setMargin === "function") {
+        terminal.setMargin(18)
+      }
       try {
         if (typeof terminal.updateImage === "function") {
           terminal.updateImage()
