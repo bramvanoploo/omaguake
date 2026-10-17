@@ -188,7 +188,6 @@ Item {
   QMLTermWidget {
     id: terminal
     anchors.fill: parent
-    margin: 12
     fillColor: "transparent"
     focus: root.activeTab
     Keys.priority: Keys.BeforeItem
@@ -296,6 +295,9 @@ Item {
     }
 
     Component.onCompleted: {
+      if (typeof terminal.setMargin === "function") {
+        terminal.setMargin(12)
+      }
       var wrapperScript = root.pluginDir + "/scripts/tmux-session.sh"
       var sessionName = "omaguake_tab_" + (root.tabId || "1")
       if (typeof termSession.setKeyBindings === "function") {
