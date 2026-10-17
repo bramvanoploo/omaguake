@@ -188,6 +188,10 @@ Item {
   QMLTermWidget {
     id: terminal
     anchors.fill: parent
+    anchors.leftMargin: 20
+    anchors.rightMargin: 20
+    anchors.topMargin: 16
+    anchors.bottomMargin: 14
     fillColor: "transparent"
     focus: root.activeTab
     Keys.priority: Keys.BeforeItem
@@ -351,7 +355,7 @@ Item {
     }
     if (terminal) {
       if (typeof terminal.setBackgroundColor === "function" && Color.background) {
-        terminal.setBackgroundColor(Qt.rgba(Color.background.r, Color.background.g, Color.background.b, root.cardOpacity))
+        terminal.setBackgroundColor(Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.0))
       }
       if (typeof terminal.setForegroundColor === "function" && Color.foreground) {
         terminal.setForegroundColor(Color.foreground)
@@ -368,7 +372,7 @@ Item {
     target: Color
     function onBackgroundChanged() {
       if (terminal && typeof terminal.setBackgroundColor === "function" && Color.background) {
-        terminal.setBackgroundColor(Qt.rgba(Color.background.r, Color.background.g, Color.background.b, root.cardOpacity))
+        terminal.setBackgroundColor(Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.0))
       }
       recolorTimer.restart()
     }
