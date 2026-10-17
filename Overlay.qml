@@ -737,24 +737,13 @@ Item {
         return 0.88
       }
 
-      // Terminal Content Area
+      // Terminal Content Area (Background rendered natively by terminal at configured opacity)
       Item {
         id: terminalArea
         width: parent.width
         y: config.tabsPosition === "top" ? tabBar.height : 0
         height: parent.height - tabBar.height
         clip: true
-
-        // Terminal Background Card (translucent to allow desktop blur)
-        Rectangle {
-          id: terminalBg
-          anchors.fill: parent
-          color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, container.cardOpacity)
-          topLeftRadius: config.tabsPosition === "top" ? 0 : Style.cornerRadius
-          topRightRadius: config.tabsPosition === "top" ? 0 : Style.cornerRadius
-          bottomLeftRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
-          bottomRightRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
-        }
 
         Component {
           id: terminalComponent

@@ -188,10 +188,7 @@ Item {
   QMLTermWidget {
     id: terminal
     anchors.fill: parent
-    anchors.leftMargin: 16
-    anchors.rightMargin: 16
-    anchors.topMargin: 12
-    anchors.bottomMargin: 10
+    margin: 12
     fillColor: "transparent"
     focus: root.activeTab
     Keys.priority: Keys.BeforeItem
