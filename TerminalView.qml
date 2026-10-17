@@ -192,6 +192,7 @@ Item {
     anchors.rightMargin: 16
     anchors.topMargin: 12
     anchors.bottomMargin: 10
+    fillColor: "transparent"
     focus: root.activeTab
     Keys.priority: Keys.BeforeItem
 
