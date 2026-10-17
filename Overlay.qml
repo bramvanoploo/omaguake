@@ -17,6 +17,7 @@ Item {
 
   property bool opened: false
   property real slideProgress: 0.0
+  property bool blurActive: false
 
   ConfigManager {
     id: config
@@ -154,6 +155,7 @@ Item {
 
   function show() {
     root.opened = true
+    root.blurActive = false
     hideAnim.stop()
     showAnim.start()
     root.updateTerminalVisibility()
@@ -162,6 +164,7 @@ Item {
 
   function hide() {
     root.opened = false
+    root.blurActive = false
     showAnim.stop()
     hideAnim.start()
     root.updateTerminalVisibility()
@@ -381,7 +384,12 @@ Item {
     to: 1.0
     duration: 250
     easing.type: Easing.OutCubic
-    onFinished: root.refreshActiveTerminal()
+    onFinished: {
+      if (root.opened) {
+        root.blurActive = true
+      }
+      root.refreshActiveTerminal()
+    }
   }
 
   NumberAnimation {
@@ -666,6 +674,40 @@ Item {
     }
   }
 
+  // Dedicated blur surface: maps only when settled, unmaps immediately on hide
+  PanelWindow {
+    id: blurWindow
+    visible: root.blurActive && root.opened
+    anchors { top: true; left: true; right: true }
+    margins {
+      top: Style.bar.sizeHorizontal
+      left: panelWindow.sideMargin
+      right: panelWindow.sideMargin
+    }
+    color: "transparent"
+    surfaceFormat.opaque: false
+
+    implicitHeight: panelWindow.panelH
+    implicitWidth: panelWindow.panelW
+
+    opacity: root.blurActive ? 1.0 : 0.0
+    Behavior on opacity {
+      NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+    }
+
+    WlrLayershell.namespace: "omaguake"
+    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    exclusionMode: ExclusionMode.Ignore
+
+    mask: Region {
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    }
+  }
+
   PanelWindow {
     id: panelWindow
     visible: root.slideProgress > 0.001 || root.opened
@@ -694,7 +736,7 @@ Item {
       height: Math.max(0, Math.round(panelWindow.panelH * root.slideProgress))
     }
 
-    WlrLayershell.namespace: "omaguake"
+    WlrLayershell.namespace: "omaguake-panel"
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: root.opened
       ? (root.focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
