@@ -66,6 +66,7 @@ omarchy plugin remove bramvanoploo.omaguake
 
 Right-click the OmaGuake bar icon to open the configuration overlay:
 - **Height**: Adjust dropdown panel height (20% – 100%).
+- **Width**: Adjust dropdown panel width (20% – 100%, default 100%), centered horizontally.
 - **Opacity**: Adjust terminal background opacity (20% – 100%) without affecting the tab bar.
 - **Tabs Position**: Choose between Bottom (Guake) or Top (Yakuake).
 - **Keybinding**: Enter any key chord; live validation alerts if the chord is already bound.

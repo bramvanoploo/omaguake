@@ -14,6 +14,7 @@ PopupCard {
   property string currentKeybinding: ""
   property string candidateKeybinding: ""
   property int panelHeightPercent: 50
+  property int panelWidthPercent: 100
   property int overlayOpacityPercent: 90
   property string tabsPosition: "bottom"
   property bool gesturesEnabled: false
@@ -66,8 +67,10 @@ PopupCard {
   function loadCurrentSettings() {
     if (configManager) {
       panelHeightPercent = configManager.heightPercent || 50
+      panelWidthPercent = configManager.widthPercent || 100
       overlayOpacityPercent = configManager.overlayOpacityPercent || 90
       heightSlider.value = panelHeightPercent
+      widthSlider.value = panelWidthPercent
       opacitySlider.value = overlayOpacityPercent
       tabsPosition = configManager.tabsPosition || "bottom"
       currentKeybinding = configManager.keybinding || ""
@@ -133,6 +136,7 @@ PopupCard {
     if (configManager) {
       configManager.saveSettings({
         heightPercent: panelHeightPercent,
+        widthPercent: panelWidthPercent,
         overlayOpacityPercent: overlayOpacityPercent,
         tabsPosition: tabsPosition,
         keybinding: currentKeybinding,
@@ -381,7 +385,87 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 2. Terminal Opacity Setting
+    // 2. Overlay Width Setting
+    Column {
+      width: parent.width
+      spacing: Style.space(5)
+
+      Column {
+        spacing: Style.space(1)
+        Text {
+          text: "Overlay Panel Width: " + root.panelWidthPercent + "%"
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          font.bold: true
+          color: Color.foreground
+        }
+        Text {
+          text: "Width of the drop-down terminal overlay (horizontally centered, default 100%)"
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.muted
+        }
+      }
+
+      Row {
+        width: parent.width
+        spacing: Style.spacing.sm
+
+        Item {
+          id: widthSliderContainer
+          width: parent.width - widthPresetRow.width - Style.spacing.sm
+          height: widthSlider.implicitHeight
+
+          PanelSlider {
+            id: widthSlider
+            anchors.fill: parent
+            minimum: 20
+            maximum: 100
+            step: 5
+            integer: true
+            value: root.panelWidthPercent
+            onMoved: function(v) {
+              root.panelWidthPercent = Math.round(v)
+            }
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: function(wheel) {
+              scrollArea.contentY = Math.max(0, Math.min(scrollArea.contentHeight - scrollArea.height, scrollArea.contentY - wheel.angleDelta.y))
+            }
+          }
+        }
+
+        Row {
+          id: widthPresetRow
+          spacing: Style.space(4)
+          Repeater {
+            model: [50, 75, 90, 100]
+            delegate: Button {
+              width: Style.space(46)
+              horizontalPadding: 0
+              text: modelData + "%"
+              fontSize: Style.font.caption
+              selected: root.panelWidthPercent === modelData
+              onClicked: {
+                root.panelWidthPercent = modelData
+                widthSlider.value = modelData
+              }
+            }
+          }
+        }
+      }
+    }
+
+    Rectangle {
+      width: parent.width
+      height: 1
+      color: Util.alpha(Color.foreground, 0.08)
+    }
+
+    // 3. Terminal Opacity Setting
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -461,7 +545,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 3. Tab Bar Position
+    // 4. Tab Bar Position
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -600,7 +684,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 5. Trackpad Gestures (Not applied by default, offers suggested & custom)
+    // 6. Trackpad Gestures (Not applied by default, offers suggested & custom)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -688,7 +772,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 6. Focus Behavior
+    // 7. Focus Behavior
     Item {
       width: parent.width
       height: Math.max(autoHideCol.implicitHeight, autoHideToggle.implicitHeight)

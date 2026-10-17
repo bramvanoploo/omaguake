@@ -23,6 +23,7 @@
     "defaultSection": "right",
     "defaults": {
       "heightPercent": 50,
+      "widthPercent": 100,
       "overlayOpacityPercent": 90,
       "tabsPosition": "bottom",
       "keybinding": "",
@@ -36,6 +37,12 @@
         "type": "number",
         "label": "Height percentage",
         "description": "Height of the drop-down terminal overlay (20-100%)."
+      },
+      {
+        "key": "widthPercent",
+        "type": "number",
+        "label": "Width percentage",
+        "description": "Width of the drop-down terminal overlay (20-100%, default 100%)."
       },
       {
         "key": "overlayOpacityPercent",

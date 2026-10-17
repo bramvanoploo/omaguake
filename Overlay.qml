@@ -669,14 +669,15 @@ Item {
     readonly property real screenW: screen ? screen.width : 1920
     readonly property real screenH: screen ? screen.height : 1080
     readonly property real panelH: Math.round(screenH * (config.heightPercent / 100.0))
+    readonly property real panelW: Math.round((panelWindow.width > 0 ? panelWindow.width : screenW) * (Math.max(20, Math.min(100, config.widthPercent !== undefined ? config.widthPercent : 100)) / 100.0))
 
     implicitHeight: panelH
     implicitWidth: screenW
 
     mask: Region {
-      x: 0
+      x: Math.round((panelWindow.width - panelWindow.panelW) / 2)
       y: 0
-      width: panelWindow.width
+      width: panelWindow.panelW
       height: Math.max(0, Math.round(panelWindow.panelH * root.slideProgress))
     }
 
@@ -707,7 +708,8 @@ Item {
     // Sliding container item
     Item {
       id: container
-      width: parent.width
+      width: panelWindow.panelW
+      x: Math.round((parent.width - width) / 2)
       height: parent.height
       y: (root.slideProgress - 1.0) * parent.height
       opacity: Math.max(0.01, root.slideProgress)

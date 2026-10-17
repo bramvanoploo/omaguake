@@ -13,6 +13,7 @@ QtObject {
   readonly property string conflictCheckerScript: pluginDir + "/scripts/conflict-checker.py"
 
   property int heightPercent: 50
+  property int widthPercent: 100
   property int overlayOpacityPercent: 90
   property string tabsPosition: "bottom"
   property string keybinding: ""
@@ -69,6 +70,7 @@ QtObject {
     try {
       var data = JSON.parse(raw)
       if (data.heightPercent !== undefined) heightPercent = parseInt(data.heightPercent, 10) || 50
+      if (data.widthPercent !== undefined) widthPercent = parseInt(data.widthPercent, 10) || 100
       if (data.overlayOpacityPercent !== undefined) overlayOpacityPercent = parseInt(data.overlayOpacityPercent, 10) || 90
       if (data.tabsPosition !== undefined) tabsPosition = data.tabsPosition === "top" ? "top" : "bottom"
       if (data.keybinding !== undefined) keybinding = String(data.keybinding)
@@ -83,6 +85,7 @@ QtObject {
 
   function applyDefaults() {
     heightPercent = 50
+    widthPercent = 100
     overlayOpacityPercent = 90
     tabsPosition = "bottom"
     keybinding = ""
@@ -93,6 +96,7 @@ QtObject {
 
   function saveSettings(obj) {
     if (obj.heightPercent !== undefined) heightPercent = obj.heightPercent
+    if (obj.widthPercent !== undefined) widthPercent = obj.widthPercent
     if (obj.overlayOpacityPercent !== undefined) overlayOpacityPercent = obj.overlayOpacityPercent
     if (obj.tabsPosition !== undefined) tabsPosition = obj.tabsPosition
     if (obj.keybinding !== undefined) keybinding = obj.keybinding
@@ -102,6 +106,7 @@ QtObject {
 
     var payload = {
       heightPercent: heightPercent,
+      widthPercent: widthPercent,
       overlayOpacityPercent: overlayOpacityPercent,
       tabsPosition: tabsPosition,
       keybinding: keybinding,
