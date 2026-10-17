@@ -8,6 +8,7 @@ QtObject {
 
   property string pluginDir: ""
   readonly property string homeDir: Quickshell.env("HOME") || ""
+  property string version: "0.9.6"
   readonly property string configPath: (homeDir ? homeDir : "~") + "/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
   readonly property string conflictCheckerScript: pluginDir + "/scripts/conflict-checker.py"
 
@@ -42,6 +43,19 @@ QtObject {
     printErrors: false
     onLoaded: root.loadOmaSettings(text())
     onFileChanged: reload()
+  }
+
+  property var _manifestFile: FileView {
+    id: manifestFile
+    path: root.pluginDir + "/manifest.json"
+    watchChanges: false
+    printErrors: false
+    onLoaded: {
+      try {
+        var m = JSON.parse(text())
+        if (m && m.version) root.version = String(m.version)
+      } catch (e) {}
+    }
   }
 
   signal settingsLoaded()

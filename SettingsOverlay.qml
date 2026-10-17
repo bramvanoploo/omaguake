@@ -259,13 +259,39 @@ PopupCard {
         anchors.verticalCenter: parent.verticalCenter
         spacing: Style.space(2)
 
-        Text {
-          text: "OmaGuake Configuration"
-          font.family: Style.font.family
-          font.pixelSize: Style.font.title
-          font.bold: true
-          color: Color.foreground
+        Row {
+          spacing: Style.space(8)
+
+          Text {
+            text: "OmaGuake Configuration"
+            font.family: Style.font.family
+            font.pixelSize: Style.font.title
+            font.bold: true
+            color: Color.foreground
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            height: Style.space(18)
+            width: versionText.implicitWidth + Style.space(12)
+            radius: Style.cornerRadius > 0 ? 4 : 0
+            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
+            border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.4)
+            border.width: 1
+
+            Text {
+              id: versionText
+              anchors.centerIn: parent
+              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.6")
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              color: Color.accent
+            }
+          }
         }
+
         Text {
           text: "Custom drop-down terminal overlay preferences & bindings"
           font.family: Style.font.family

@@ -224,6 +224,11 @@ Item {
 
       if (isCopy) {
         terminal.copyClipboard()
+        var sessionName = "omaguake_tab_" + (root.tabId || "1")
+        Quickshell.execDetached([
+          "tmux", "-L", "omaguake", "send-keys", "-t", sessionName,
+          "-X", "copy-pipe-no-clear", "wl-copy"
+        ])
         event.accepted = true
         return
       } else if (isPaste) {
@@ -290,6 +295,9 @@ Item {
     Component.onCompleted: {
       var wrapperScript = root.pluginDir + "/scripts/tmux-session.sh"
       var sessionName = "omaguake_tab_" + (root.tabId || "1")
+      if (typeof termSession.setKeyBindings === "function") {
+        termSession.setKeyBindings(root.pluginDir + "/QMLTermWidget/kb-layouts/default")
+      }
       if (typeof termSession.setShellProgram === "function") {
         termSession.setShellProgram(wrapperScript)
       }
@@ -304,13 +312,7 @@ Item {
     }
   }
 
-  MouseArea {
-    anchors.fill: parent
-    z: -1
-    onPressed: {
-      root.refreshTerminal()
-    }
-  }
+  // MouseArea removed to prevent deselection on click
 
   function refreshTerminal() {
     if (terminal) {
