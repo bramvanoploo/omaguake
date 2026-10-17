@@ -690,11 +690,6 @@ Item {
     implicitHeight: panelWindow.panelH
     implicitWidth: panelWindow.panelW
 
-    opacity: root.blurActive ? 1.0 : 0.0
-    Behavior on opacity {
-      NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
-    }
-
     WlrLayershell.namespace: "omaguake"
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
@@ -737,7 +732,7 @@ Item {
     }
 
     WlrLayershell.namespace: "omaguake-panel"
-    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.opened
       ? (root.focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
       : WlrKeyboardFocus.None
