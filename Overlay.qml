@@ -684,14 +684,14 @@ Item {
     readonly property real panelW: Math.round(screenW * (Math.max(20, Math.min(100, config.widthPercent !== undefined ? config.widthPercent : 100)) / 100.0))
     readonly property int sideMargin: Math.max(0, Math.round((screenW - panelW) / 2))
 
-    implicitHeight: panelH
+    implicitHeight: Math.max(1, Math.round(panelH * root.slideProgress))
     implicitWidth: panelW
 
     mask: Region {
       x: 0
       y: 0
       width: panelWindow.width
-      height: Math.max(0, Math.round(panelWindow.panelH * root.slideProgress))
+      height: panelWindow.height
     }
 
     WlrLayershell.namespace: "omaguake"
@@ -722,8 +722,8 @@ Item {
     Item {
       id: container
       width: parent.width
-      height: parent.height
-      y: (root.slideProgress - 1.0) * parent.height
+      height: panelWindow.panelH
+      y: Math.round((root.slideProgress - 1.0) * panelWindow.panelH)
       opacity: Math.max(0.01, root.slideProgress)
 
       readonly property real cardOpacity: {
