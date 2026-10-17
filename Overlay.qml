@@ -177,6 +177,7 @@ Item {
       schemeName: root.currentSchemeName,
       clipboardBinds: root.currentClipboardBinds,
       toggleKeybinding: config.keybinding || "",
+      cardOpacity: container.cardOpacity,
       visible: false,
       activeTab: false
     })
@@ -622,6 +623,11 @@ Item {
     target: config
     function onOverlayOpacityPercentChanged() {
       root.reloadTheme()
+      for (var i = 0; i < root.tabs.length; i++) {
+        if (root.tabs[i].termItem) {
+          root.tabs[i].termItem.cardOpacity = container.cardOpacity
+        }
+      }
     }
     function onKeybindingChanged() {
       for (var i = 0; i < root.tabs.length; i++) {
@@ -731,20 +737,19 @@ Item {
         return 0.88
       }
 
-      // Terminal Content Area (Opacity setting applied specifically to terminal)
+      // Terminal Content Area
       Item {
         id: terminalArea
         width: parent.width
         y: config.tabsPosition === "top" ? tabBar.height : 0
         height: parent.height - tabBar.height
         clip: true
-        opacity: container.cardOpacity
 
-        // Terminal Background Card
+        // Terminal Background Card (translucent to allow desktop blur)
         Rectangle {
           id: terminalBg
           anchors.fill: parent
-          color: Color.background
+          color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, container.cardOpacity)
           topLeftRadius: config.tabsPosition === "top" ? 0 : Style.cornerRadius
           topRightRadius: config.tabsPosition === "top" ? 0 : Style.cornerRadius
           bottomLeftRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
@@ -758,6 +763,7 @@ Item {
             schemeName: root.currentSchemeName
             clipboardBinds: root.currentClipboardBinds
             toggleKeybinding: config.keybinding || ""
+            cardOpacity: container.cardOpacity
           }
         }
       }

@@ -29,6 +29,11 @@ Item {
 
   property string toggleKeybinding: ""
   property string schemeName: "Omaguake"
+  property real cardOpacity: 1.0
+
+  onCardOpacityChanged: {
+    root.reloadColorScheme(root.schemeName)
+  }
 
   onSchemeNameChanged: {
     if (terminal && schemeName.length > 0) {
@@ -343,7 +348,7 @@ Item {
     }
     if (terminal) {
       if (typeof terminal.setBackgroundColor === "function" && Color.background) {
-        terminal.setBackgroundColor(Color.background)
+        terminal.setBackgroundColor(Qt.rgba(Color.background.r, Color.background.g, Color.background.b, root.cardOpacity))
       }
       if (typeof terminal.setForegroundColor === "function" && Color.foreground) {
         terminal.setForegroundColor(Color.foreground)
@@ -360,7 +365,7 @@ Item {
     target: Color
     function onBackgroundChanged() {
       if (terminal && typeof terminal.setBackgroundColor === "function" && Color.background) {
-        terminal.setBackgroundColor(Color.background)
+        terminal.setBackgroundColor(Qt.rgba(Color.background.r, Color.background.g, Color.background.b, root.cardOpacity))
       }
       recolorTimer.restart()
     }
