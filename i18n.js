@@ -123,7 +123,15 @@ var translations = {
     "modal_conflict_gest_configure": "Configure Different Gestures…",
     "modal_how_proceed": "How would you like to proceed?",
     "modal_cancel": "Do Nothing (Cancel)",
-    "modal_conflict_gest_4finger": "Use 4-Finger Swipe Gestures Instead…"
+    "modal_conflict_gest_4finger": "Use 4-Finger Swipe Gestures Instead…",
+    "dep_dialog_title": "Dependency Required",
+    "dep_dialog_subtitle": "OmaGuake Dropdown Terminal",
+    "dep_dialog_repo": "Official repositories (extra)",
+    "dep_dialog_desc": "Fast, hardware-accelerated terminal emulation engine needed to render interactive shells, tabs, and colors inside the desktop overlay.",
+    "dep_dialog_prompt": "Would you like to install this dependency automatically now?",
+    "dep_dialog_subtext": "Installation runs via your package manager without secondary confirmation prompts.",
+    "dep_dialog_install": "Install",
+    "dep_dialog_cancel": "Cancel"
   },
   "nl": {
     "language_title": "Interfacetaal",
@@ -197,7 +205,15 @@ var translations = {
     "modal_conflict_gest_configure": "Andere gebaren configureren…",
     "modal_how_proceed": "Hoe wilt u verdergaan?",
     "modal_cancel": "Niets doen (Annuleren)",
-    "modal_conflict_gest_4finger": "Gebruik in plaats daarvan 4-vingergebaren…"
+    "modal_conflict_gest_4finger": "Gebruik in plaats daarvan 4-vingergebaren…",
+    "dep_dialog_title": "Afhankelijkheid vereist",
+    "dep_dialog_subtitle": "OmaGuake Dropdown Terminal",
+    "dep_dialog_repo": "Officiële pakketbronnen (extra)",
+    "dep_dialog_desc": "Snelle, hardwareversnelde terminal-emulatie vereist om interactieve shells, tabbladen en kleuren weer te geven in het overlay-paneel.",
+    "dep_dialog_prompt": "Wil je deze afhankelijkheid nu automatisch installeren?",
+    "dep_dialog_subtext": "De installatie verloopt via je pakketbeheerder zonder extra bevestigingsvragen.",
+    "dep_dialog_install": "Installeren",
+    "dep_dialog_cancel": "Annuleren"
   },
   "es": {
     "language_title": "Idioma de la interfaz",

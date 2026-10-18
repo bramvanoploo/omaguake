@@ -62,5 +62,10 @@ tmux -L "$SOCKET" bind-key -T copy-mode-vi Enter send-keys -X copy-pipe-and-canc
 tmux -L "$SOCKET" bind-key -T root DoubleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY'"
 tmux -L "$SOCKET" bind-key -T root TripleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY'"
 
+# Emit theme OSC color definitions to terminal
+if command -v omarchy-theme-osc >/dev/null 2>&1 && [ -f "$HOME/.local/state/omarchy/current/theme/colors.toml" ]; then
+  omarchy-theme-osc "$HOME/.local/state/omarchy/current/theme/colors.toml" 2>/dev/null || true
+fi
+
 # Attach to the session
 exec tmux -L "$SOCKET" attach-session -t "$SESSION_NAME"

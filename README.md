@@ -7,8 +7,10 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
 ## Features
 
 - **Dropdown Overlay**:
-  - Full-width (100%), 50% screen height by default (configurable).
+  - Full-width (100%), 50% screen height by default (configurable width and height from 20% to 100%).
   - Smooth animated slide-down on summon and slide-up on hide.
+  - Background-only translucency with desktop blur while keeping terminal text 100% opaque and crisp.
+  - Live Omarchy theme synchronization (background, foreground, cursor, and 16-color ANSI palette).
   - Automatically hides when focus is lost (clicking outside the terminal window).
 
 - **Tabbed Layout & Process Persistence**:
@@ -20,22 +22,23 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
   - Pinned **`+`** button on the far right of the tab bar to quickly open new tabs.
   - Tab close button (`×`) to terminate and close individual sessions cleanly.
   - Configurable tab bar position: **Bottom** (Guake style, default) or **Top** (Yakuake style).
+  - Built-in keyboard shortcuts for tab management (`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab`, `Ctrl+Shift+Tab`, `Ctrl+1..9`) and universal copy/paste (`Super+C`/`Super+V`, `Ctrl+Shift+C`/`Ctrl+Shift+V`, and active Hyprland universal clipboard bindings).
 
 - **Summon Triggers**:
-  - Global Keybinding: **`CTRL + SPACE`** (configurable).
+  - Global Keybinding: **`CTRL + SPACE`** suggested (or record any custom shortcut).
   - Trackpad Gestures:
-    - **3-finger swipe down**: Show / summon terminal.
-    - **3-finger swipe up**: Hide / dismiss terminal.
-    - *Only enabled if these gestures haven't already been configured.*
+    - **3-finger or 4-finger swipe down**: Show / summon terminal.
+    - **3-finger or 4-finger swipe up**: Hide / dismiss terminal.
+    - *Not enabled by default; configured with conflict checking via the settings overlay.*
 
-- **Smart Conflict Validation**:
+- **Smart Conflict Validation & Resolution**:
   - When configuring keybindings, OmaGuake checks against active Hyprland bindings and Omarchy shortcuts.
-  - If a conflict is detected, the user is **blocked from applying** it, with a clear explanation of what action or application owns the shortcut.
+  - If a conflict is detected, OmaGuake alerts you with the conflicting action, offers conflict-free alternatives, or lets you take ownership automatically.
   - Trackpad gestures are checked against existing gestures and 3-finger drag (`drag_3fg`) configurations.
 
 - **Status Bar Integration**:
   - Status bar widget with terminal icon.
-  - **Left-click**: Toggle OmaGuake dropdown terminal.
+  - **Left-click**: Toggle OmaGuake dropdown terminal (automatically checks for `qmltermwidget` and offers a one-click installation dialog if missing).
   - **Right-click**: Open the plugin configuration overlay.
 
 ## Installation
@@ -45,7 +48,8 @@ omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
 ```
 
 > [!NOTE]
-> `tmux` is recommended to enable background session persistence and auto-restoration across shell restarts. If `tmux` is not present, OmaGuake automatically falls back to running `$SHELL` directly.
+> - `qmltermwidget` (from the official `extra` repository) is required to render terminals inside the Quickshell overlay. If it is not yet installed, clicking the OmaGuake bar icon will prompt to install it automatically.
+> - `tmux` is recommended to enable background session persistence and auto-restoration across shell restarts. If `tmux` is not present, OmaGuake automatically falls back to running `$SHELL` directly.
 
 ## Uninstall
 
@@ -64,20 +68,21 @@ omarchy plugin remove bramvanoploo.omaguake
 
 ## Configuration
 
-Right-click the OmaGuake bar icon to open the configuration overlay:
+Right-click the OmaGuake bar icon (or click `⚙` in the terminal tab bar) to open the configuration overlay:
 - **Height**: Adjust dropdown panel height (20% – 100%).
 - **Width**: Adjust dropdown panel width (20% – 100%, default 100%), centered horizontally.
-- **Opacity**: Adjust terminal background opacity (20% – 100%) without affecting the tab bar.
+- **Opacity**: Adjust terminal background opacity (20% – 100%) while keeping terminal text and the tab bar 100% opaque.
 - **Tabs Position**: Choose between Bottom (Guake) or Top (Yakuake).
-- **Keybinding**: Enter any key chord; live validation alerts if the chord is already bound.
-- **Trackpad Gestures**: Toggle 3-finger swipe gestures; alerts if gestures conflict with other settings.
+- **Keybinding**: Apply the suggested shortcut (`CTRL + SPACE`) or record any custom key chord with automatic conflict resolution.
+- **Trackpad Gestures**: Configure 3-finger or 4-finger vertical swipe gestures with conflict checking.
 - **Auto-hide**: Toggle auto-hide on focus loss.
+- **Interface Language**: Follow system locale or choose from 15+ supported languages.
 
 ## Architecture & Third-Party Dependencies
 
 ### [QMLTermWidget](https://github.com/Swordfish90/qmltermwidget)
 - **License**: [GPL-2.0](https://github.com/Swordfish90/qmltermwidget/blob/master/LICENSE)
-- **How it is used**: OmaGuake embeds QMLTermWidget to provide native hardware-accelerated terminal emulation directly inside the Quickshell Qt overlay. It handles PTY allocation, font glyph rendering, VT100/ANSI sequences, selection, and clipboard integration.
+- **How it is used**: OmaGuake uses `qmltermwidget` from the official repositories (`extra`) to provide native hardware-accelerated terminal emulation directly inside the Quickshell Qt overlay. It handles PTY allocation, font glyph rendering, VT100/ANSI sequences, selection, and clipboard integration. The plugin automatically checks for this dependency on first launch and offers one-click automatic installation via `yay` (or `pacman`).
 
 ### [tmux](https://github.com/tmux/tmux) (Session Backend)
 - **License**: ISC / BSD

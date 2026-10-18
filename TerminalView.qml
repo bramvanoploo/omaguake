@@ -3,8 +3,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.Commons
-import qs.Ui
-import "QMLTermWidget"
+import QMLTermWidget
 
 Item {
   id: root
@@ -37,7 +36,7 @@ Item {
 
   onSchemeNameChanged: {
     if (terminal && schemeName.length > 0) {
-      terminal.colorScheme = schemeName
+      root.reloadColorScheme(schemeName)
     }
   }
 
@@ -185,16 +184,45 @@ Item {
 
   property string pluginDir: String(Qt.resolvedUrl(".")).replace("file://", "").replace(/\/$/, "")
 
+  Rectangle {
+    id: leftMarginStrip
+    anchors.left: parent.left
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    width: 20
+    color: Color.background
+  }
+
+  MouseArea {
+    anchors.fill: leftMarginStrip
+    onClicked: terminal.forceActiveFocus()
+  }
+
+  Rectangle {
+    id: rightMarginStrip
+    anchors.right: parent.right
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    width: 20
+    color: Color.background
+  }
+
+  MouseArea {
+    anchors.fill: rightMarginStrip
+    onClicked: terminal.forceActiveFocus()
+  }
+
   QMLTermWidget {
     id: terminal
-    anchors.fill: parent
-    anchors.leftMargin: 20
-    anchors.rightMargin: 20
+    anchors.left: leftMarginStrip.right
+    anchors.right: rightMarginStrip.left
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
     fillColor: "transparent"
     focus: root.activeTab
     Keys.priority: Keys.BeforeItem
 
-    colorScheme: root.schemeName
+    colorScheme: "DarkPastels"
     font.family: (Style.resolvedFontFamily && Style.resolvedFontFamily !== "monospace")
       ? Style.resolvedFontFamily
       : "JetBrainsMono Nerd Font"
@@ -300,7 +328,7 @@ Item {
       var wrapperScript = root.pluginDir + "/scripts/tmux-session.sh"
       var sessionName = "omaguake_tab_" + (root.tabId || "1")
       if (typeof termSession.setKeyBindings === "function") {
-        termSession.setKeyBindings(root.pluginDir + "/QMLTermWidget/kb-layouts/default")
+        termSession.setKeyBindings("default")
       }
       if (typeof termSession.setShellProgram === "function") {
         termSession.setShellProgram(wrapperScript)
@@ -347,15 +375,18 @@ Item {
     }
     if (terminal) {
       if (typeof terminal.setBackgroundColor === "function" && Color.background) {
-        terminal.setBackgroundColor(Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.0))
+        terminal.setBackgroundColor(Color.background)
       }
       if (typeof terminal.setForegroundColor === "function" && Color.foreground) {
         terminal.setForegroundColor(Color.foreground)
       }
-      if (root.schemeName && root.schemeName.length > 0) {
-        terminal.colorScheme = ""
-        terminal.colorScheme = root.schemeName
+      if (typeof terminal.setKeyboardCursorColor === "function" && Color.accent) {
+        terminal.setKeyboardCursorColor(false, Color.accent)
       }
+      if (typeof terminal.fillColor !== "undefined") {
+        terminal.fillColor = "transparent"
+      }
+
       root.refreshTerminal()
     }
   }
@@ -364,7 +395,7 @@ Item {
     target: Color
     function onBackgroundChanged() {
       if (terminal && typeof terminal.setBackgroundColor === "function" && Color.background) {
-        terminal.setBackgroundColor(Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.0))
+        terminal.setBackgroundColor(Color.background)
       }
       recolorTimer.restart()
     }

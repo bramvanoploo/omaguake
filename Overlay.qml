@@ -36,20 +36,6 @@ Item {
     paste: [{ modmask: 64, key: "V" }]
   })
 
-  FileView {
-    id: currentSchemeFile
-    path: root.pluginDir + "/current_scheme.txt"
-    watchChanges: true
-    printErrors: false
-    onLoaded: {
-      var name = String(text() || "").trim()
-      if (name.length > 0) {
-        root.currentSchemeName = name
-      }
-    }
-    onFileChanged: reload()
-  }
-
   // Watch Omarchy theme state files directly
   FileView {
     id: omarchyThemeNameFile
@@ -126,7 +112,17 @@ Item {
 
   function open() { show() }
   function close() { hide() }
-  function toggle() { opened ? hide() : show() }
+  function toggle() {
+    if (showAnim.running) {
+      hide()
+    } else if (hideAnim.running) {
+      show()
+    } else if (root.opened) {
+      hide()
+    } else {
+      show()
+    }
+  }
 
   function updateTerminalVisibility() {
     for (var i = 0; i < root.tabs.length; i++) {
@@ -154,6 +150,9 @@ Item {
   }
 
   function show() {
+    if (root.tabs.length === 0) {
+      root.createTab()
+    }
     root.opened = true
     root.blurActive = false
     hideAnim.stop()
@@ -163,19 +162,38 @@ Item {
   }
 
   function hide() {
-    root.opened = false
+    if (!root.opened && !showAnim.running) return
     root.blurActive = false
     showAnim.stop()
     hideAnim.start()
-    root.updateTerminalVisibility()
+  }
+
+  property var terminalComponent: null
+
+  function getTerminalComponent() {
+    if (!terminalComponent || terminalComponent.status === Component.Error) {
+      terminalComponent = Qt.createComponent("TerminalView.qml")
+    }
+    return terminalComponent
   }
 
   function createTab(specifiedId) {
+    if (specifiedId !== undefined && specifiedId !== null) {
+      var checkId = Number(specifiedId)
+      for (var t = 0; t < tabs.length; t++) {
+        if (tabs[t].id === checkId) return
+      }
+    }
     var newId = (specifiedId !== undefined && specifiedId !== null) ? Number(specifiedId) : nextTabId++
     if (newId >= nextTabId) {
       nextTabId = newId + 1
     }
-    var term = terminalComponent.createObject(terminalArea, {
+    var comp = root.getTerminalComponent()
+    if (!comp || comp.status === Component.Error) {
+      console.warn("TerminalView component unavailable: " + (comp ? comp.errorString() : "null"))
+      return
+    }
+    var term = comp.createObject(terminalArea, {
       tabId: String(newId),
       schemeName: root.currentSchemeName,
       clipboardBinds: root.currentClipboardBinds,
@@ -189,6 +207,7 @@ Item {
       console.warn("Failed to create TerminalView object for tab " + newId)
       return
     }
+    term.anchors.fill = terminalArea
 
     term.titleUpdated.connect(function(newTitle) {
       root.updateTabTitleById(newId, newTitle)
@@ -242,7 +261,6 @@ Item {
       }
       root.refreshActiveTerminal()
       tabsFlick.contentX = Math.max(0, tabsRow.width - tabsFlick.width)
-      root.reloadTheme()
     })
   }
 
@@ -397,8 +415,13 @@ Item {
     target: root
     property: "slideProgress"
     to: 0.0
-    duration: 200
-    easing.type: Easing.InCubic
+    duration: 250
+    easing.type: Easing.OutCubic
+    onFinished: {
+      root.opened = false
+      root.blurActive = false
+      root.updateTerminalVisibility()
+    }
   }
 
   // Hyprland Global Shortcuts
@@ -492,7 +515,6 @@ Item {
       }
     }
     onExited: function(exitCode, exitStatus) {
-      currentSchemeFile.reload()
       root.notifyTabsRetheme()
       if (root.themeReloadQueued) {
         root.themeReloadQueued = false
@@ -549,11 +571,7 @@ Item {
         return
       }
       root.themeReloadQueued = false
-      var cmd = [root.pluginDir + "/scripts/sync-theme.py"]
-      if (config && config.overlayOpacityPercent !== undefined) {
-        cmd.push("--opacity-percent", String(config.overlayOpacityPercent))
-      }
-      themeSyncProc.command = cmd
+      themeSyncProc.command = [root.pluginDir + "/scripts/sync-theme.py"]
       themeSyncProc.running = true
     }
   }
@@ -630,7 +648,6 @@ Item {
   Connections {
     target: config
     function onOverlayOpacityPercentChanged() {
-      root.reloadTheme()
       for (var i = 0; i < root.tabs.length; i++) {
         if (root.tabs[i].termItem) {
           root.tabs[i].termItem.cardOpacity = container.cardOpacity
@@ -653,7 +670,7 @@ Item {
 
   onOpenedChanged: {
     if (opened) {
-      root.reloadTheme()
+      root.notifyTabsRetheme()
       focusPrimed = false
       focusPrimeTimer.restart()
     } else {
@@ -746,10 +763,10 @@ Item {
 
     // Automatically hide on focus loss
     HyprlandFocusGrab {
-      active: root.opened && root.focusPrimed && config.autoHideOnFocusLoss
+      active: root.opened && root.focusPrimed && config.autoHideOnFocusLoss && !hideAnim.running
       windows: [panelWindow]
       onCleared: {
-        if (root.opened && config.autoHideOnFocusLoss) {
+        if (root.opened && config.autoHideOnFocusLoss && !hideAnim.running) {
           root.hide()
         }
       }
@@ -760,8 +777,7 @@ Item {
       id: container
       width: parent.width
       height: parent.height
-      y: (root.slideProgress - 1.0) * parent.height
-      opacity: Math.max(0.01, root.slideProgress)
+      y: Math.round((root.slideProgress - 1.0) * parent.height)
 
       readonly property real cardOpacity: {
         if (config && config.overlayOpacityPercent !== undefined) {
@@ -774,34 +790,18 @@ Item {
         return 0.88
       }
 
-      // Terminal Content Area
+      // Terminal Content Area (Background-only opacity shader keeps text 100% opaque)
       Item {
         id: terminalArea
         width: parent.width
         y: config.tabsPosition === "top" ? tabBar.height : 0
         height: parent.height - tabBar.height
         clip: true
-
-        // Terminal Background Card (single translucent background layer behind transparent terminal)
-        Rectangle {
-          id: terminalBg
-          anchors.fill: parent
-          color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, container.cardOpacity)
-          topLeftRadius: config.tabsPosition === "top" ? 0 : Style.cornerRadius
-          topRightRadius: config.tabsPosition === "top" ? 0 : Style.cornerRadius
-          bottomLeftRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
-          bottomRightRadius: config.tabsPosition === "top" ? Style.cornerRadius : 0
-        }
-
-        Component {
-          id: terminalComponent
-          TerminalView {
-            anchors.fill: parent
-            schemeName: root.currentSchemeName
-            clipboardBinds: root.currentClipboardBinds
-            toggleKeybinding: config.keybinding || ""
-            cardOpacity: container.cardOpacity
-          }
+        layer.enabled: container.cardOpacity < 0.999
+        layer.effect: ShaderEffect {
+          property color bgColor: Color.background
+          property real bgOpacity: container.cardOpacity
+          fragmentShader: Qt.resolvedUrl("bg_opacity.frag.qsb")
         }
       }
 
