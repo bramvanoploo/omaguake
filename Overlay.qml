@@ -12,8 +12,27 @@ import "i18n.js" as I18n
 Item {
   id: root
 
+  // Injected by omarchy-shell host
+  property var shell: null
+
   property string omarchyPath: Quickshell.env("OMARCHY_PATH") || "/usr/share/omarchy"
   readonly property string pluginDir: String(Qt.resolvedUrl(".")).replace("file://", "").replace(/\/$/, "")
+
+  readonly property string barPosition: (root.shell && root.shell.bar && root.shell.bar.position)
+    ? String(root.shell.bar.position)
+    : "top"
+  readonly property bool barHidden: (root.shell && root.shell.bar)
+    ? (root.shell.bar.barHidden === true)
+    : false
+  readonly property int liveBarSize: barHidden
+    ? 0
+    : ((root.shell && root.shell.bar && root.shell.bar.barSize > 0)
+        ? root.shell.bar.barSize
+        : ((barPosition === "left" || barPosition === "right") ? Style.bar.sizeVertical : Style.bar.sizeHorizontal))
+  readonly property int topBarOffset: (barPosition === "top") ? liveBarSize : 0
+  readonly property int bottomBarOffset: (barPosition === "bottom") ? liveBarSize : 0
+  readonly property int leftBarOffset: (barPosition === "left") ? liveBarSize : 0
+  readonly property int rightBarOffset: (barPosition === "right") ? liveBarSize : 0
 
   property bool opened: false
   property real slideProgress: 0.0
@@ -697,9 +716,9 @@ Item {
     visible: root.blurActive && root.opened
     anchors { top: true; left: true; right: true }
     margins {
-      top: Style.bar.sizeHorizontal
-      left: panelWindow.sideMargin
-      right: panelWindow.sideMargin
+      top: root.topBarOffset
+      left: root.leftBarOffset + panelWindow.sideMarginLeft
+      right: root.rightBarOffset + panelWindow.sideMarginRight
     }
     color: "transparent"
     surfaceFormat.opaque: false
@@ -725,18 +744,21 @@ Item {
     visible: root.slideProgress > 0.001 || root.opened
     anchors { top: true; left: true; right: true }
     margins {
-      top: Style.bar.sizeHorizontal
-      left: panelWindow.sideMargin
-      right: panelWindow.sideMargin
+      top: root.topBarOffset
+      left: root.leftBarOffset + panelWindow.sideMarginLeft
+      right: root.rightBarOffset + panelWindow.sideMarginRight
     }
     color: "transparent"
     surfaceFormat.opaque: false
 
     readonly property real screenW: screen ? screen.width : 1920
     readonly property real screenH: screen ? screen.height : 1080
-    readonly property real panelH: Math.round(screenH * (config.heightPercent / 100.0))
-    readonly property real panelW: Math.round(screenW * (Math.max(20, Math.min(100, config.widthPercent !== undefined ? config.widthPercent : 100)) / 100.0))
-    readonly property int sideMargin: Math.max(0, Math.round((screenW - panelW) / 2))
+    readonly property real availableW: Math.max(100, screenW - root.leftBarOffset - root.rightBarOffset)
+    readonly property real availableH: Math.max(100, screenH - root.topBarOffset - root.bottomBarOffset)
+    readonly property real panelH: Math.round(availableH * (config.heightPercent / 100.0))
+    readonly property real panelW: Math.round(availableW * (Math.max(20, Math.min(100, config.widthPercent !== undefined ? config.widthPercent : 100)) / 100.0))
+    readonly property int sideMarginLeft: Math.max(0, Math.floor((availableW - panelW) / 2))
+    readonly property int sideMarginRight: Math.max(0, Math.round(availableW - panelW) - sideMarginLeft)
 
     implicitHeight: panelH
     implicitWidth: panelW

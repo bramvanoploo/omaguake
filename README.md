@@ -79,15 +79,15 @@ omarchy plugin remove bramvanoploo.omaguake
 
 ## Configuration
 
-Right-click the OmaGuake bar icon (or click `⚙` in the terminal tab bar) to open the configuration overlay:
-- **Height**: Adjust dropdown panel height (20% – 100%).
-- **Width**: Adjust dropdown panel width (20% – 100%, default 100%), centered horizontally.
-- **Opacity**: Adjust terminal background opacity (20% – 100%) while keeping terminal text and the tab bar 100% opaque.
+Right-click the OmaGuake bar icon (or click `⚙` in the terminal tab bar) to open the configuration overlay (all changes apply immediately in real time):
+- **Interface Language**: Follow system locale or choose from 15+ supported languages.
+- **Height**: Adjust dropdown panel height (20% – 100%, in 5% increments).
+- **Width**: Adjust dropdown panel width (20% – 100%, default 100%, in 5% increments), centered horizontally.
+- **Opacity**: Adjust terminal background opacity (20% – 100%, in 5% increments) while keeping terminal text and the tab bar 100% opaque.
 - **Tabs Position**: Choose between Bottom (Guake) or Top (Yakuake).
 - **Keybinding**: Apply the suggested shortcut (`CTRL + SPACE`) or record any custom key chord with automatic conflict resolution.
 - **Trackpad Gestures**: Configure 3-finger or 4-finger vertical swipe gestures with conflict checking.
 - **Auto-hide**: Toggle auto-hide on focus loss.
-- **Interface Language**: Follow system locale or choose from 15+ supported languages.
 
 ## Architecture & Third-Party Dependencies
 

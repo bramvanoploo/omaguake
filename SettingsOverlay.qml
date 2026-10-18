@@ -107,14 +107,17 @@ PopupCard {
     }
   }
 
+  function snapPercent(val, fallback) {
+    var num = parseInt(val, 10)
+    if (isNaN(num)) num = fallback
+    return Math.max(20, Math.min(100, Math.round(num / 5) * 5))
+  }
+
   function loadCurrentSettings() {
     if (configManager) {
-      panelHeightPercent = configManager.heightPercent || 50
-      panelWidthPercent = configManager.widthPercent || 100
-      overlayOpacityPercent = configManager.overlayOpacityPercent || 90
-      heightSlider.value = panelHeightPercent
-      widthSlider.value = panelWidthPercent
-      opacitySlider.value = overlayOpacityPercent
+      panelHeightPercent = snapPercent(configManager.heightPercent, 50)
+      panelWidthPercent = snapPercent(configManager.widthPercent, 100)
+      overlayOpacityPercent = snapPercent(configManager.overlayOpacityPercent, 90)
       tabsPosition = configManager.tabsPosition || "bottom"
       selectedLanguage = configManager.language || ""
       I18n.setLanguageOverride(selectedLanguage)
@@ -191,22 +194,6 @@ PopupCard {
         autoHideOnFocusLoss: autoHideOnFocusLoss
       })
     }
-  }
-
-  function applyAllAndClose() {
-    if (configManager) {
-      applyProc.command = [
-        configManager.conflictCheckerScript,
-        "apply",
-        currentKeybinding,
-        gesturesEnabled ? "1" : "0",
-        String(gestureFingers),
-        "0"
-      ]
-      applyProc.running = true
-      saveToConfig()
-    }
-    root.close()
   }
 
   // Background Processes
@@ -286,6 +273,7 @@ PopupCard {
     contentWidth: width
     clip: true
     boundsBehavior: Flickable.StopAtBounds
+    interactive: !(heightSlider.dragging || widthSlider.dragging || opacitySlider.dragging)
 
     Column {
       id: contentCol
@@ -335,7 +323,7 @@ PopupCard {
             Text {
               id: versionText
               anchors.centerIn: parent
-              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.9")
+              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.10")
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -359,7 +347,46 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.1)
     }
 
-    // 1. Overlay Height Setting
+    // 1. Interface Language Setting (All the way at the top)
+    Column {
+      width: parent.width
+      spacing: Style.space(5)
+
+      Column {
+        spacing: Style.space(1)
+        Text {
+          text: root.tr("language_title")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          font.bold: true
+          color: Color.foreground
+        }
+        Text {
+          text: root.tr("language_desc")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.muted
+        }
+      }
+
+      Button {
+        id: langSelectorBtn
+        width: parent.width
+        text: "🌐  " + root.languageDisplayName(root.selectedLanguage)
+        fontSize: Style.font.bodySmall
+        onClicked: {
+          root.languageDialogOpen = true
+        }
+      }
+    }
+
+    Rectangle {
+      width: parent.width
+      height: 1
+      color: Util.alpha(Color.foreground, 0.08)
+    }
+
+    // 2. Overlay Height Setting
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -393,7 +420,12 @@ PopupCard {
             integer: true
             value: root.panelHeightPercent
             onMoved: function(v) {
-              root.panelHeightPercent = Math.round(v)
+              var snapped = root.snapPercent(v, 50)
+              if (root.panelHeightPercent !== snapped) {
+                root.panelHeightPercent = snapped
+                root.saveToConfig()
+              }
+              heightSlider.liveValue = snapped
             }
           }
 
@@ -418,8 +450,10 @@ PopupCard {
               fontSize: Style.font.caption
               selected: root.panelHeightPercent === modelData
               onClicked: {
-                root.panelHeightPercent = modelData
-                heightSlider.value = modelData
+                if (root.panelHeightPercent !== modelData) {
+                  root.panelHeightPercent = modelData
+                  root.saveToConfig()
+                }
               }
             }
           }
@@ -433,7 +467,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 2. Overlay Width Setting
+    // 3. Overlay Width Setting
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -473,7 +507,12 @@ PopupCard {
             integer: true
             value: root.panelWidthPercent
             onMoved: function(v) {
-              root.panelWidthPercent = Math.round(v)
+              var snapped = root.snapPercent(v, 100)
+              if (root.panelWidthPercent !== snapped) {
+                root.panelWidthPercent = snapped
+                root.saveToConfig()
+              }
+              widthSlider.liveValue = snapped
             }
           }
 
@@ -498,8 +537,10 @@ PopupCard {
               fontSize: Style.font.caption
               selected: root.panelWidthPercent === modelData
               onClicked: {
-                root.panelWidthPercent = modelData
-                widthSlider.value = modelData
+                if (root.panelWidthPercent !== modelData) {
+                  root.panelWidthPercent = modelData
+                  root.saveToConfig()
+                }
               }
             }
           }
@@ -513,7 +554,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 3. Terminal Opacity Setting
+    // 4. Terminal Opacity Setting
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -553,7 +594,12 @@ PopupCard {
             integer: true
             value: root.overlayOpacityPercent
             onMoved: function(v) {
-              root.overlayOpacityPercent = Math.round(v)
+              var snapped = root.snapPercent(v, 90)
+              if (root.overlayOpacityPercent !== snapped) {
+                root.overlayOpacityPercent = snapped
+                root.saveToConfig()
+              }
+              opacitySlider.liveValue = snapped
             }
           }
 
@@ -578,8 +624,10 @@ PopupCard {
               fontSize: Style.font.caption
               selected: root.overlayOpacityPercent === modelData
               onClicked: {
-                root.overlayOpacityPercent = modelData
-                opacitySlider.value = modelData
+                if (root.overlayOpacityPercent !== modelData) {
+                  root.overlayOpacityPercent = modelData
+                  root.saveToConfig()
+                }
               }
             }
           }
@@ -593,7 +641,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 4. Tab Bar Position
+    // 5. Tab Bar Position
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -622,13 +670,23 @@ PopupCard {
           width: Math.floor((parent.width - Style.spacing.sm) / 2)
           text: root.tr("tabs_bottom")
           selected: root.tabsPosition === "bottom"
-          onClicked: root.tabsPosition = "bottom"
+          onClicked: {
+            if (root.tabsPosition !== "bottom") {
+              root.tabsPosition = "bottom"
+              root.saveToConfig()
+            }
+          }
         }
         Button {
           width: Math.floor((parent.width - Style.spacing.sm) / 2)
           text: root.tr("tabs_top")
           selected: root.tabsPosition === "top"
-          onClicked: root.tabsPosition = "top"
+          onClicked: {
+            if (root.tabsPosition !== "top") {
+              root.tabsPosition = "top"
+              root.saveToConfig()
+            }
+          }
         }
       }
     }
@@ -639,7 +697,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 5. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
+    // 6. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -732,7 +790,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 6. Trackpad Gestures (Not applied by default, offers suggested & custom)
+    // 7. Trackpad Gestures (Not applied by default, offers suggested & custom)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -820,7 +878,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 7. Focus Behavior
+    // 8. Focus Behavior
     Item {
       width: parent.width
       height: Math.max(autoHideCol.implicitHeight, autoHideToggle.implicitHeight)
@@ -853,73 +911,10 @@ PopupCard {
         checked: root.autoHideOnFocusLoss
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        onToggled: root.autoHideOnFocusLoss = !root.autoHideOnFocusLoss
-      }
-    }
-
-    Rectangle {
-      width: parent.width
-      height: 1
-      color: Util.alpha(Color.foreground, 0.08)
-    }
-
-    // 8. Interface Language Setting (All the way at the bottom)
-    Column {
-      width: parent.width
-      spacing: Style.space(5)
-
-      Column {
-        spacing: Style.space(1)
-        Text {
-          text: root.tr("language_title")
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
-          font.bold: true
-          color: Color.foreground
+        onToggled: {
+          root.autoHideOnFocusLoss = !root.autoHideOnFocusLoss
+          root.saveToConfig()
         }
-        Text {
-          text: root.tr("language_desc")
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          color: Color.muted
-        }
-      }
-
-      Button {
-        id: langSelectorBtn
-        width: parent.width
-        text: "🌐  " + root.languageDisplayName(root.selectedLanguage)
-        fontSize: Style.font.bodySmall
-        onClicked: {
-          root.languageDialogOpen = true
-        }
-      }
-    }
-
-    Rectangle {
-      width: parent.width
-      height: 1
-      color: Util.alpha(Color.foreground, 0.1)
-    }
-
-    // Footer Buttons
-    Row {
-      anchors.right: parent.right
-      spacing: Style.spacing.sm
-
-      Button {
-        id: cancelBtn
-        width: Math.max(saveBtn.implicitWidth, Style.space(120))
-        text: root.tr("cancel")
-        onClicked: root.close()
-      }
-
-      Button {
-        id: saveBtn
-        width: Math.max(implicitWidth, Style.space(120))
-        text: root.tr("apply")
-        selected: true
-        onClicked: root.applyAllAndClose()
       }
     }
   }
@@ -1715,6 +1710,7 @@ PopupCard {
               onClicked: {
                 root.selectedLanguage = modelData.code
                 root.languageDialogOpen = false
+                root.saveToConfig()
               }
             }
           }
