@@ -1,4 +1,15 @@
-# OmaGuake (`bramvanoploo.omaguake`)
+# OmaGuake
+
+!!NO MANUAL SETUP REQUIRED !!
+
+Just run...
+
+```bash
+omarchy plugin add https://github.com/bramvanoploo/omaguake.git --enable
+```
+
+... and the plugin will guide you if needed.
+
 
 An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimicking **Guake** and **Yakuake**.
 
