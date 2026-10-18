@@ -13,7 +13,6 @@ Item {
   property bool activeTab: false
 
   property string lastCommand: ""
-  property string typedLine: ""
 
   signal titleUpdated(string newTitle)
   signal commandUpdated(string commandText)
@@ -40,6 +39,13 @@ Item {
     }
   }
 
+
+  function queryPaneState() {
+    if (!paneQueryProc.running) {
+      paneQueryProc.command = [root.pluginDir + "/scripts/session-manager.py", "query", "omaguake_tab_" + (root.tabId || "1")]
+      paneQueryProc.running = true
+    }
+  }
 
   Process {
     id: paneQueryProc
@@ -69,16 +75,18 @@ Item {
   }
 
   Timer {
+    id: immediateQueryTimer
+    interval: 50
+    repeat: false
+    onTriggered: root.queryPaneState()
+  }
+
+  Timer {
     id: procCheckTimer
     interval: 500
     repeat: true
     running: root.activeTab
-    onTriggered: {
-      if (!paneQueryProc.running) {
-        paneQueryProc.command = [root.pluginDir + "/scripts/session-manager.py", "query", "omaguake_tab_" + (root.tabId || "1")]
-        paneQueryProc.running = true
-      }
-    }
+    onTriggered: root.queryPaneState()
   }
 
   property var clipboardBinds: null
@@ -265,12 +273,6 @@ Item {
         return
       } else if (isPaste) {
         terminal.pasteClipboard()
-        try {
-          var pasted = Quickshell.clipboardText || ""
-          if (pasted.length > 0) {
-            root.typedLine += pasted
-          }
-        } catch(e) {}
         event.accepted = true
         return
       }
@@ -304,23 +306,7 @@ Item {
       }
 
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        var entered = root.typedLine.trim()
-        root.typedLine = ""
-        if (entered.length > 0) {
-          root.lastCommand = entered
-          root.commandUpdated(entered)
-        }
-      } else if (event.key === Qt.Key_Backspace) {
-        if (root.typedLine.length > 0) {
-          root.typedLine = root.typedLine.slice(0, -1)
-        }
-      } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_C || event.key === Qt.Key_U)) {
-        root.typedLine = ""
-      } else if (event.text && event.text.length > 0 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
-        var ch = event.text
-        if (ch >= " " && ch !== "\r" && ch !== "\n") {
-          root.typedLine += ch
-        }
+        immediateQueryTimer.restart()
       }
     }
 
