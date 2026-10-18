@@ -899,6 +899,7 @@ Item {
                   Text {
                     id: tabIcon
                     text: root.terminalIcon
+                    textFormat: Text.PlainText
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
                     color: tabItem.isActive ? Color.accent : Color.muted
@@ -908,6 +909,7 @@ Item {
                   Text {
                     id: tabLabel
                     text: modelData.title
+                    textFormat: Text.PlainText
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
                     font.bold: tabItem.isActive

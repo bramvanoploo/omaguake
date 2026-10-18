@@ -240,13 +240,6 @@ Item {
       id: termSession
       initialWorkingDirectory: Quickshell.env("HOME") || "."
 
-      onTitleChanged: function() {
-        if (termSession.title && termSession.title !== root.currentTitle) {
-          root.currentTitle = termSession.title
-          root.titleUpdated(termSession.title)
-        }
-      }
-
       onFinished: {
         root.processExited(0)
       }
@@ -324,6 +317,7 @@ Item {
       }
       termSession.startShellProgram()
       root.reloadColorScheme(root.schemeName)
+      immediateQueryTimer.restart()
       if (root.activeTab) {
         root.refreshTerminal()
       }

@@ -1072,6 +1072,7 @@ PopupCard {
               id: recStatusText
               width: parent.width - 24
               text: root.isCheckingRecordedKey ? root.tr("modal_record_verifying") : (root.recordedConflict ? root.recordedConflictMessage : root.tr("modal_record_available", { chord: root.recordedChord }))
+              textFormat: Text.PlainText
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               wrapMode: Text.WordWrap
@@ -1264,6 +1265,7 @@ PopupCard {
               id: gestStatusMsgText
               width: parent.width - 24
               text: root.customGestureConflict ? root.customGestureConflictMessage : root.tr("modal_gestures_available", { fingers: root.candidateGestureFingers })
+              textFormat: Text.PlainText
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               wrapMode: Text.WordWrap
@@ -1391,6 +1393,7 @@ PopupCard {
             anchors.fill: parent
             anchors.margins: 8
             text: root.suggestedKeyConflictMessage || root.tr("modal_conflict_key_default_msg")
+            textFormat: Text.PlainText
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
@@ -1559,6 +1562,7 @@ PopupCard {
             anchors.fill: parent
             anchors.margins: 8
             text: root.suggestedGestureConflictMessage || root.tr("modal_conflict_gest_default_msg")
+            textFormat: Text.PlainText
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
