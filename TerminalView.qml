@@ -24,10 +24,8 @@ Item {
   signal previousTabRequested()
   signal switchTabNumberRequested(int tabNumber)
   signal toggleRequested()
-  signal hideRequested()
 
   property string toggleKeybinding: ""
-  property bool overlayOpen: false
   property string schemeName: "Omaguake"
   property real cardOpacity: 1.0
 
@@ -250,14 +248,6 @@ Item {
     Keys.onPressed: function(event) {
       if (root.toggleKeybinding && root.matchChord(event, root.toggleKeybinding)) {
         root.toggleRequested()
-        event.accepted = true
-        return
-      }
-
-      // ESC dismisses the dropdown panel while it is open and focused
-      if (root.overlayOpen && event.key === Qt.Key_Escape
-          && !(event.modifiers & (Qt.ControlModifier | Qt.MetaModifier | Qt.AltModifier | Qt.ShiftModifier))) {
-        root.hideRequested()
         event.accepted = true
         return
       }

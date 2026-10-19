@@ -150,7 +150,6 @@ Item {
         var isCurrent = (i === root.currentTabIndex)
         item.visible = isCurrent
         item.activeTab = (isCurrent && root.opened)
-        item.overlayOpen = (isCurrent && root.opened)
       }
     }
   }
@@ -188,12 +187,6 @@ Item {
     hideAnim.start()
   }
 
-  // ESC dismiss requested by the focused terminal (ignored while already sliding up)
-  function hideFromTerminal() {
-    if (hideAnim.running) return
-    root.hide()
-  }
-
   property var terminalComponent: null
 
   function getTerminalComponent() {
@@ -226,8 +219,7 @@ Item {
       toggleKeybinding: config.keybinding || "",
       cardOpacity: container.cardOpacity,
       visible: false,
-      activeTab: false,
-      overlayOpen: false
+      activeTab: false
     })
 
     if (!term) {
@@ -262,9 +254,6 @@ Item {
     })
     term.toggleRequested.connect(function() {
       root.toggle()
-    })
-    term.hideRequested.connect(function() {
-      root.hideFromTerminal()
     })
 
     var newTabs = tabs.slice()
