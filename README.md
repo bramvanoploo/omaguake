@@ -23,6 +23,7 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
   - Background-only translucency with desktop blur while keeping terminal text 100% opaque and crisp.
   - Live Omarchy theme synchronization (background, foreground, cursor, and 16-color ANSI palette).
   - Automatically hides when focus is lost (clicking outside the terminal window).
+  - **ESC Dismiss**: pressing `ESC` while the panel is open and focused slides it up and hides it (the key is consumed by the overlay and not delivered to the shell — summon again with your keybinding, gesture, or the bar icon).
 
 - **Tabbed Layout & Process Persistence**:
   - Starts with one tab open by default running the user's default Omarchy shell/terminal.
