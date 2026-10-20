@@ -2,11 +2,23 @@
 # Omaguake tmux session launcher and manager
 # Ensures persistent terminal sessions across Quickshell restarts with status bar hidden.
 
-set -e
+set -euo pipefail
 
 SOCKET="omaguake"
 SESSION_NAME="${1:-omaguake_tab_1}"
 ACTION="${2:-attach}"
+
+# Validate session name: tmux-safe charset only, no leading dash (option injection)
+case "$SESSION_NAME" in
+  -*|*[!a-zA-Z0-9_.-]*)
+    echo "tmux-session: rejecting invalid session name: $SESSION_NAME" >&2
+    exit 1
+    ;;
+esac
+case "$ACTION" in
+  attach|kill) ;;
+  *) ACTION="attach" ;;
+esac
 
 # If tmux is not available, fallback to default user shell
 if ! command -v tmux >/dev/null 2>&1; then

@@ -22,6 +22,42 @@ MOD_MAP = {
     "mod1": 8,
 }
 
+# Key aliases normalized to a canonical hyprctl/QML name
+KEY_ALIASES = {
+    "BACKQUOTE": "GRAVE",
+    "BACKTICK": "GRAVE",
+    "GRAVE_ACCENT": "GRAVE",
+    "`": "GRAVE",
+    "~": "GRAVE",
+    "ESC": "ESCAPE",
+    "ENTER": "RETURN",
+    "DEL": "DELETE",
+    "PGUP": "PAGEUP",
+    "PGDN": "PAGEDOWN",
+}
+
+# Keys accepted verbatim (letters, digits, function keys) + this allowlist.
+SAFE_KEY_EXTRA = {
+    "SPACE", "GRAVE", "RETURN", "TAB", "ESCAPE", "BACKSPACE", "INSERT",
+    "DELETE", "HOME", "END", "PAGEUP", "PAGEDOWN", "MINUS", "EQUAL",
+    "COMMA", "PERIOD", "SLASH", "SEMICOLON", "APOSTROPHE", "BACKSLASH",
+}
+
+
+def is_safe_key(key):
+    """Keys reaching the Lua template must be inert: no quotes, backslashes,
+    spaces, braces, or newlines that could break out of the generated binding."""
+    if not key:
+        return False
+    if key in SAFE_KEY_EXTRA:
+        return True
+    if re.fullmatch(r"[A-Z0-9]", key):
+        return True
+    if re.fullmatch(r"F(?:[1-9]|1[0-2])", key):
+        return True
+    return False
+
+
 def normalize_key_chord(chord_str):
     if not chord_str:
         return None, 0, ""
@@ -40,6 +76,10 @@ def normalize_key_chord(chord_str):
             mod_names.append(tl.upper())
         else:
             key = token.upper()
+
+    key = KEY_ALIASES.get(key, key)
+    if not is_safe_key(key):
+        return None, 0, ""
     
     return "+".join(sorted(mod_names)) + " + " + key if mod_names else key, mods, key
 
@@ -133,7 +173,7 @@ def find_free_suggestions(exclude_chord=None):
         "CTRL + ALT + T",
         "SUPER + F12",
         "ALT + F12",
-        "CTRL + BACKQUOTE"
+        "CTRL + GRAVE"
     ]
     norm_exclude = normalize_key_chord(exclude_chord)[0] if exclude_chord else ""
     free_suggestions = []
@@ -325,7 +365,7 @@ def disable_gesture_conflicts_in_configs(target_fingers):
                         parts[i] = pattern.sub(repl, parts[i])
                 new_content = "".join(parts)
                 if new_content != content:
-                    temp_f = p.with_suffix(".tmp")
+                    temp_f = p.with_suffix(f".tmp.{os.getpid()}")
                     temp_f.write_text(new_content, encoding="utf-8")
                     temp_f.replace(p)
             except Exception:
@@ -363,7 +403,7 @@ def disable_key_conflicts_in_configs(chord_norm):
                         parts[i] = "\n".join(new_lines)
                 if changed:
                     new_content = "".join(parts)
-                    temp_f = p.with_suffix(".tmp")
+                    temp_f = p.with_suffix(f".tmp.{os.getpid()}")
                     temp_f.write_text(new_content, encoding="utf-8")
                     temp_f.replace(p)
             except Exception:
@@ -419,7 +459,7 @@ def apply_configuration(keychord, enable_gestures, gesture_fingers=3, unbind_con
     block_lines.append("")
     
     new_content = cleaned + "\n" + "\n".join(block_lines)
-    temp_binding = BINDINGS_LUA.with_suffix(".tmp")
+    temp_binding = BINDINGS_LUA.with_suffix(f".tmp.{os.getpid()}")
     try:
         temp_binding.write_text(new_content, encoding="utf-8")
         temp_binding.replace(BINDINGS_LUA)

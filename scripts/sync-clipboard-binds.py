@@ -28,11 +28,15 @@ def get_hyprland_binds():
                 s.connect(sock_path)
                 s.sendall(b"j/binds")
                 raw = b""
+                max_bytes = 4 * 1024 * 1024
                 while True:
                     chunk = s.recv(8192)
                     if not chunk:
                         break
                     raw += chunk
+                    if len(raw) > max_bytes:
+                        s.close()
+                        raise RuntimeError("hyprland socket response too large")
                 s.close()
                 return json.loads(raw.decode("utf-8", errors="replace"))
             except Exception:

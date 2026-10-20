@@ -68,6 +68,14 @@ QtObject {
   signal settingsLoaded()
   signal settingsChanged()
 
+  // Clamp persisted numbers so a hand-edited/corrupt settings.json can never
+  // produce a zero-size panel, invisible overlay, or invalid gesture config.
+  function clampInt(val, lo, hi, fallback) {
+    var n = parseInt(val, 10)
+    if (isNaN(n)) n = fallback
+    return Math.max(lo, Math.min(hi, Math.round(n / 5) * 5))
+  }
+
   function loadSettings(raw) {
     if (!raw || !raw.trim()) {
       applyDefaults()
@@ -75,9 +83,9 @@ QtObject {
     }
     try {
       var data = JSON.parse(raw)
-      if (data.heightPercent !== undefined) heightPercent = parseInt(data.heightPercent, 10) || 50
-      if (data.widthPercent !== undefined) widthPercent = parseInt(data.widthPercent, 10) || 100
-      if (data.overlayOpacityPercent !== undefined) overlayOpacityPercent = parseInt(data.overlayOpacityPercent, 10) || 90
+      if (data.heightPercent !== undefined) heightPercent = clampInt(data.heightPercent, 20, 100, 50)
+      if (data.widthPercent !== undefined) widthPercent = clampInt(data.widthPercent, 20, 100, 100)
+      if (data.overlayOpacityPercent !== undefined) overlayOpacityPercent = clampInt(data.overlayOpacityPercent, 20, 100, 90)
       if (data.tabsPosition !== undefined) tabsPosition = data.tabsPosition === "top" ? "top" : "bottom"
       if (data.language !== undefined) {
         language = String(data.language)
@@ -85,7 +93,10 @@ QtObject {
       }
       if (data.keybinding !== undefined) keybinding = String(data.keybinding)
       if (data.gesturesEnabled !== undefined) gesturesEnabled = data.gesturesEnabled === true
-      if (data.gestureFingers !== undefined) gestureFingers = parseInt(data.gestureFingers, 10) || 3
+      if (data.gestureFingers !== undefined) {
+        var gf = parseInt(data.gestureFingers, 10)
+        gestureFingers = (gf === 4) ? 4 : 3
+      }
       if (data.autoHideOnFocusLoss !== undefined) autoHideOnFocusLoss = data.autoHideOnFocusLoss !== false
       settingsLoaded()
     } catch (e) {

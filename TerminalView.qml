@@ -81,11 +81,14 @@ Item {
     onTriggered: root.queryPaneState()
   }
 
+  // Poll tmux pane state at a relaxed cadence, only while this tab is the
+  // visible/active one. A 500ms subprocess spawn per tab is wasteful; titles
+  // update on <Enter> via immediateQueryTimer, so a slower poll suffices.
   Timer {
     id: procCheckTimer
-    interval: 500
+    interval: 1500
     repeat: true
-    running: root.activeTab
+    running: root.activeTab && root.visible
     onTriggered: root.queryPaneState()
   }
 

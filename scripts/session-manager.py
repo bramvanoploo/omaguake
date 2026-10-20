@@ -24,6 +24,7 @@ def list_sessions():
         ],
         capture_output=True,
         text=True,
+        timeout=2,
     )
     if proc.returncode != 0:
         print(json.dumps([]))
@@ -81,6 +82,7 @@ def query_session(session_name):
         ],
         capture_output=True,
         text=True,
+        timeout=2,
     )
     if proc.returncode != 0 or not proc.stdout.strip():
         print(json.dumps({}))
@@ -102,7 +104,11 @@ def query_session(session_name):
 def kill_session(session_name):
     if not session_name.startswith("omaguake_tab_"):
         session_name = f"omaguake_tab_{session_name}"
-    subprocess.run(["tmux", "-L", SOCKET, "kill-session", "-t", session_name], capture_output=True)
+    subprocess.run(
+        ["tmux", "-L", SOCKET, "kill-session", "-t", session_name],
+        capture_output=True,
+        timeout=2,
+    )
 
 
 def main():
@@ -115,4 +121,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (BrokenPipeError, TimeoutError, subprocess.SubprocessError):
+        print(json.dumps([] if len(sys.argv) < 2 or sys.argv[1] == "list" else {}))

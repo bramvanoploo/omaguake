@@ -755,7 +755,7 @@ Item {
     readonly property real screenH: screen ? screen.height : 1080
     readonly property real availableW: Math.max(100, screenW - root.leftBarOffset - root.rightBarOffset)
     readonly property real availableH: Math.max(100, screenH - root.topBarOffset - root.bottomBarOffset)
-    readonly property real panelH: Math.round(availableH * (config.heightPercent / 100.0))
+    readonly property real panelH: Math.round(availableH * (Math.max(20, Math.min(100, config.heightPercent)) / 100.0))
     readonly property real panelW: Math.round(availableW * (Math.max(20, Math.min(100, config.widthPercent !== undefined ? config.widthPercent : 100)) / 100.0))
     readonly property int sideMarginLeft: Math.max(0, Math.floor((availableW - panelW) / 2))
     readonly property int sideMarginRight: Math.max(0, Math.round(availableW - panelW) - sideMarginLeft)
