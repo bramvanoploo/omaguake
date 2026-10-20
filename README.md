@@ -93,7 +93,7 @@ Right-click the OmaGuake bar icon (or click `⚙` in the terminal tab bar) to op
 
 ### [QMLTermWidget](https://github.com/Swordfish90/qmltermwidget)
 - **License**: [GPL-2.0](https://github.com/Swordfish90/qmltermwidget/blob/master/LICENSE)
-- **How it is used**: OmaGuake uses `qmltermwidget` from the official repositories (`extra`) to provide native hardware-accelerated terminal emulation directly inside the Quickshell Qt overlay. It handles PTY allocation, font glyph rendering, VT100/ANSI sequences, selection, and clipboard integration. The plugin automatically checks for this dependency on first launch and offers one-click automatic installation via `yay` (or `pacman`).
+- **How it is used**: OmaGuake uses `qmltermwidget` from the official repositories (`extra`) to provide native hardware-accelerated terminal emulation directly inside the Quickshell Qt overlay. It handles PTY allocation, font glyph rendering, VT100/ANSI sequences, selection, and clipboard integration. The plugin automatically checks for this dependency on first launch and offers one-click automatic installation via `pacman`.
 
 ### [tmux](https://github.com/tmux/tmux) (Session Backend)
 - **License**: ISC / BSD

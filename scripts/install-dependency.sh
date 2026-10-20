@@ -8,11 +8,7 @@ xdg-terminal-exec --app-id=org.omarchy.terminal --title="OmaGuake Setup" -e bash
   echo -e "\033[1;34m::\033[0m Installing qmltermwidget dependency..."
   echo -e "\033[0;36m::\033[0m Source: Official repositories (extra)"
   echo
-  if command -v yay >/dev/null 2>&1; then
-    yay -S --noconfirm qmltermwidget
-  else
-    sudo pacman -S --noconfirm qmltermwidget
-  fi
+  sudo pacman -S --noconfirm qmltermwidget
   echo
   if command -v omarchy-show-done >/dev/null 2>&1; then
     omarchy-show-done
