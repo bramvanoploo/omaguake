@@ -742,6 +742,11 @@ Item {
   PanelWindow {
     id: panelWindow
     visible: root.slideProgress > 0.001 || root.opened
+    onVisibleChanged: {
+      if (visible && root.opened) {
+        Qt.callLater(function() { root.refreshActiveTerminal() })
+      }
+    }
     anchors { top: true; left: true; right: true }
     margins {
       top: root.topBarOffset
@@ -772,8 +777,8 @@ Item {
 
     WlrLayershell.namespace: "omaguake-panel"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: root.opened
-      ? (root.focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
+    WlrLayershell.keyboardFocus: (root.opened && !hideAnim.running)
+      ? WlrKeyboardFocus.Exclusive
       : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
 

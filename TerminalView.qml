@@ -193,6 +193,44 @@ Item {
     return false
   }
 
+  Process {
+    id: pasteProc
+    command: ["wl-paste", "--no-newline"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var str = String(text || "")
+        if (str.length > 0) {
+          if (terminal && typeof terminal.bracketedPasteMode === "function" && terminal.bracketedPasteMode()) {
+            termSession.sendText("\u001b[200~" + str + "\u001b[201~")
+          } else {
+            termSession.sendText(str)
+          }
+        } else {
+          terminal.pasteClipboard()
+        }
+      }
+    }
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode !== 0) {
+        terminal.pasteClipboard()
+      }
+    }
+  }
+
+  function doPaste() {
+    var sessionName = "omaguake_tab_" + (root.tabId || "1")
+    Quickshell.execDetached([
+      "tmux", "-L", "omaguake", "send-keys", "-t", sessionName, "-X", "cancel"
+    ])
+    if (!pasteProc.running) {
+      pasteProc.command = ["wl-paste", "--no-newline"]
+      pasteProc.running = true
+    } else {
+      terminal.pasteClipboard()
+    }
+  }
+
   property string pluginDir: String(Qt.resolvedUrl(".")).replace("file://", "").replace(/\/$/, "")
 
   Rectangle {
@@ -263,12 +301,12 @@ Item {
         var sessionName = "omaguake_tab_" + (root.tabId || "1")
         Quickshell.execDetached([
           "tmux", "-L", "omaguake", "send-keys", "-t", sessionName,
-          "-X", "copy-pipe-no-clear", "wl-copy"
+          "-X", "copy-pipe-and-cancel", "wl-copy"
         ])
         event.accepted = true
         return
       } else if (isPaste) {
-        terminal.pasteClipboard()
+        root.doPaste()
         event.accepted = true
         return
       }

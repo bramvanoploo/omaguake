@@ -43,6 +43,14 @@ else
   CLIP_COPY="cat"
 fi
 
+if command -v wl-paste >/dev/null 2>&1; then
+  CLIP_PASTE="wl-paste -n"
+elif command -v xclip >/dev/null 2>&1; then
+  CLIP_PASTE="xclip -selection clipboard -o"
+else
+  CLIP_PASTE=""
+fi
+
 # If session does not exist, create it in detached mode and configure options
 if ! tmux -L "$SOCKET" has-session -t "$SESSION_NAME" 2>/dev/null; then
   DEFAULT_SHELL="${SHELL:-/bin/bash}"
@@ -59,20 +67,27 @@ fi
 
 # Enable mouse support and clipboard integration across server and session
 tmux -L "$SOCKET" set-option -t "$SESSION_NAME" mouse on
-tmux -L "$SOCKET" bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-no-clear "$CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-no-clear "$CLIP_COPY"
+tmux -L "$SOCKET" bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
+tmux -L "$SOCKET" bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
 tmux -L "$SOCKET" bind-key -T copy-mode MouseDown1Pane "select-pane ; send-keys -X cancel"
 tmux -L "$SOCKET" bind-key -T copy-mode-vi MouseDown1Pane "select-pane ; send-keys -X cancel"
-tmux -L "$SOCKET" bind-key -T copy-mode DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY"
+tmux -L "$SOCKET" bind-key -T copy-mode DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY"
+tmux -L "$SOCKET" bind-key -T copy-mode-vi DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY"
+tmux -L "$SOCKET" bind-key -T copy-mode TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY"
+tmux -L "$SOCKET" bind-key -T copy-mode-vi TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY"
 tmux -L "$SOCKET" bind-key -T copy-mode C-c send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
 tmux -L "$SOCKET" bind-key -T copy-mode-vi C-c send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
 tmux -L "$SOCKET" bind-key -T copy-mode Enter send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
 tmux -L "$SOCKET" bind-key -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T root DoubleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY'"
-tmux -L "$SOCKET" bind-key -T root TripleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY'"
+tmux -L "$SOCKET" bind-key -T root DoubleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY'"
+tmux -L "$SOCKET" bind-key -T root TripleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY'"
+
+# Middle-click paste from system clipboard
+if [ -n "$CLIP_PASTE" ]; then
+  tmux -L "$SOCKET" bind-key -T root MouseDown2Pane run-shell "$CLIP_PASTE 2>/dev/null | tmux load-buffer - ; tmux paste-buffer -p"
+  tmux -L "$SOCKET" bind-key -T copy-mode MouseDown2Pane run-shell "tmux send-keys -X cancel ; $CLIP_PASTE 2>/dev/null | tmux load-buffer - ; tmux paste-buffer -p"
+  tmux -L "$SOCKET" bind-key -T copy-mode-vi MouseDown2Pane run-shell "tmux send-keys -X cancel ; $CLIP_PASTE 2>/dev/null | tmux load-buffer - ; tmux paste-buffer -p"
+fi
 
 # Emit theme OSC color definitions to terminal
 if command -v omarchy-theme-osc >/dev/null 2>&1 && [ -f "$HOME/.local/state/omarchy/current/theme/colors.toml" ]; then

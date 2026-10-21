@@ -323,7 +323,7 @@ PopupCard {
             Text {
               id: versionText
               anchors.centerIn: parent
-              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.10")
+              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.11")
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
