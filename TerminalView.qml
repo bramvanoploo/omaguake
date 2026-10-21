@@ -7,6 +7,7 @@ import QMLTermWidget
 
 Item {
   id: root
+  focus: root.activeTab
 
   property string tabId: ""
   property string currentTitle: "bash"

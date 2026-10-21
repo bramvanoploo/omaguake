@@ -778,7 +778,7 @@ Item {
     WlrLayershell.namespace: "omaguake-panel"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: (root.opened && !hideAnim.running)
-      ? WlrKeyboardFocus.Exclusive
+      ? (root.focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
       : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
 
@@ -802,6 +802,7 @@ Item {
     // Sliding container item
     Item {
       id: container
+      focus: true
       width: parent.width
       height: parent.height
       y: Math.round((root.slideProgress - 1.0) * parent.height)
@@ -820,6 +821,7 @@ Item {
       // Terminal Content Area (Background-only opacity shader keeps text 100% opaque)
       Item {
         id: terminalArea
+        focus: true
         width: parent.width
         y: config.tabsPosition === "top" ? tabBar.height : 0
         height: parent.height - tabBar.height
