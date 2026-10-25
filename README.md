@@ -33,7 +33,7 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
   - Pinned **`+`** button on the far right of the tab bar to quickly open new tabs.
   - Tab close button (`×`) to terminate and close individual sessions cleanly.
   - Configurable tab bar position: **Bottom** (Guake style, default) or **Top** (Yakuake style).
-  - Built-in keyboard shortcuts for tab management (`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab`, `Ctrl+Shift+Tab`, `Ctrl+1..9`) and universal copy/paste (`Super+C`/`Super+V`, `Ctrl+Shift+C`/`Ctrl+Shift+V`, and active Hyprland universal clipboard bindings).
+  - Built-in keyboard shortcuts for tab management (`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab`, `Ctrl+Shift+Tab`, `Ctrl+1..9`), panel height adjustment (`Ctrl++` / `Ctrl+-` in 5% increments), and universal copy/paste (`Super+C`/`Super+V`, `Ctrl+Shift+C`/`Ctrl+Shift+V`, and active Hyprland universal clipboard bindings).
 
 - **Summon Triggers**:
   - Global Keybinding: **`CTRL + SPACE`** suggested (or record any custom shortcut).
@@ -84,6 +84,7 @@ Right-click the OmaGuake bar icon (or click `⚙` in the terminal tab bar) to op
 - **Height**: Adjust dropdown panel height (20% – 100%, in 5% increments).
 - **Width**: Adjust dropdown panel width (20% – 100%, default 100%, in 5% increments), centered horizontally.
 - **Opacity**: Adjust terminal background opacity (20% – 100%, in 5% increments) while keeping terminal text and the tab bar 100% opaque.
+- **Scroll Speed**: Adjust mouse wheel and trackpad scroll speed across 5 levels (from smooth/slow to tmux default).
 - **Tabs Position**: Choose between Bottom (Guake) or Top (Yakuake).
 - **Keybinding**: Apply the suggested shortcut (`CTRL + SPACE`) or record any custom key chord with automatic conflict resolution.
 - **Trackpad Gestures**: Configure 3-finger or 4-finger vertical swipe gestures with conflict checking.

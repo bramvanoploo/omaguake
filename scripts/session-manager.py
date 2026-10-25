@@ -5,10 +5,21 @@ Queries running tmux sessions for active command, cwd, or restores session list.
 """
 
 import json
+import re
 import subprocess
 import sys
 
 SOCKET = "omaguake"
+SAFE_SESSION_RE = re.compile(r"^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$")
+
+
+def normalize_session_name(name):
+    s = str(name or "").strip()
+    if not s.startswith("omaguake_tab_"):
+        s = f"omaguake_tab_{s}"
+    if not SAFE_SESSION_RE.match(s):
+        return None
+    return s
 
 
 def list_sessions():
@@ -33,7 +44,7 @@ def list_sessions():
     sessions = []
     seen = set()
     for line in proc.stdout.splitlines():
-        parts = line.strip().split("|")
+        parts = line.strip().split("|", 3)
         if len(parts) >= 3:
             s_name = parts[0]
             if s_name in seen:
@@ -54,10 +65,9 @@ def list_sessions():
                 "session_name": s_name,
                 "command": cmd,
                 "cwd": cwd,
-                "title": title
+                "title": title,
             })
 
-    # Sort numerically if integer IDs
     try:
         sessions.sort(key=lambda x: int(x["id"]))
     except Exception:
@@ -67,8 +77,10 @@ def list_sessions():
 
 
 def query_session(session_name):
-    if not session_name.startswith("omaguake_tab_"):
-        session_name = f"omaguake_tab_{session_name}"
+    target = normalize_session_name(session_name)
+    if not target:
+        print(json.dumps({}))
+        return
     proc = subprocess.run(
         [
             "tmux",
@@ -76,7 +88,7 @@ def query_session(session_name):
             SOCKET,
             "list-panes",
             "-t",
-            session_name,
+            target,
             "-F",
             "#{pane_current_command}|#{pane_current_path}|#{pane_title}",
         ],
@@ -89,7 +101,7 @@ def query_session(session_name):
         return
 
     first_line = proc.stdout.splitlines()[0]
-    parts = first_line.strip().split("|")
+    parts = first_line.strip().split("|", 2)
     cmd = parts[0] if len(parts) > 0 else ""
     cwd = parts[1] if len(parts) > 1 else ""
     title = parts[2] if len(parts) > 2 else ""
@@ -97,15 +109,16 @@ def query_session(session_name):
     print(json.dumps({
         "command": cmd,
         "cwd": cwd,
-        "title": title
+        "title": title,
     }))
 
 
 def kill_session(session_name):
-    if not session_name.startswith("omaguake_tab_"):
-        session_name = f"omaguake_tab_{session_name}"
+    target = normalize_session_name(session_name)
+    if not target:
+        return
     subprocess.run(
-        ["tmux", "-L", SOCKET, "kill-session", "-t", session_name],
+        ["tmux", "-L", SOCKET, "kill-session", "-t", target],
         capture_output=True,
         timeout=2,
     )
@@ -123,5 +136,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (BrokenPipeError, TimeoutError, subprocess.SubprocessError):
+    except (BrokenPipeError, TimeoutError, subprocess.SubprocessError, OSError):
         print(json.dumps([] if len(sys.argv) < 2 or sys.argv[1] == "list" else {}))

@@ -37,6 +37,16 @@ Item {
   property bool opened: false
   property real slideProgress: 0.0
   property bool blurActive: false
+  property bool openSettingsAfterHide: false
+
+  Timer {
+    id: openSettingsDelayTimer
+    interval: 50
+    repeat: false
+    onTriggered: {
+      Quickshell.execDetached(["omarchy-shell", "omaguake.bar", "openSettings"])
+    }
+  }
 
   ConfigManager {
     id: config
@@ -80,6 +90,19 @@ Item {
     }
   }
 
+  property bool _destroying: false
+
+  Timer {
+    id: watcherRestartTimer
+    interval: 2000
+    repeat: false
+    onTriggered: {
+      if (!root._destroying && !omarchyThemeWatcher.running) {
+        omarchyThemeWatcher.running = true
+      }
+    }
+  }
+
   // Active inotifywait process monitoring Omarchy current directory across directory swaps
   Process {
     id: omarchyThemeWatcher
@@ -101,11 +124,9 @@ Item {
       }
     }
     onExited: function(exitCode, exitStatus) {
-      Qt.callLater(function() {
-        if (!omarchyThemeWatcher.running) {
-          omarchyThemeWatcher.running = true
-        }
-      })
+      if (!root._destroying && exitCode !== 127) {
+        watcherRestartTimer.restart()
+      }
     }
   }
 
@@ -172,6 +193,8 @@ Item {
     if (root.tabs.length === 0) {
       root.createTab()
     }
+    root.openSettingsAfterHide = false
+    openSettingsDelayTimer.stop()
     root.opened = true
     root.blurActive = false
     hideAnim.stop()
@@ -254,6 +277,12 @@ Item {
     })
     term.toggleRequested.connect(function() {
       root.toggle()
+    })
+    term.increaseHeightRequested.connect(function() {
+      root.increaseHeight()
+    })
+    term.decreaseHeightRequested.connect(function() {
+      root.decreaseHeight()
     })
 
     var newTabs = tabs.slice()
@@ -440,6 +469,10 @@ Item {
       root.opened = false
       root.blurActive = false
       root.updateTerminalVisibility()
+      if (root.openSettingsAfterHide) {
+        root.openSettingsAfterHide = false
+        openSettingsDelayTimer.restart()
+      }
     }
   }
 
@@ -463,6 +496,24 @@ Item {
     name: "hide"
     description: "Hide OmaGuake dropdown terminal"
     onPressed: root.hide()
+  }
+
+  function adjustHeightPercent(delta) {
+    if (!root.opened) return
+    var current = config.heightPercent !== undefined ? config.heightPercent : 50
+    var next = Math.max(20, Math.min(100, Math.round((current + delta) / 5) * 5))
+    if (next !== current) {
+      config.saveSettings({ heightPercent: next })
+      Qt.callLater(function() { root.refreshActiveTerminal() })
+    }
+  }
+
+  function increaseHeight() {
+    adjustHeightPercent(5)
+  }
+
+  function decreaseHeight() {
+    adjustHeightPercent(-5)
   }
 
   function selectTab(index) {
@@ -502,6 +553,8 @@ Item {
     function newTab(): void { root.createTab() }
     function closeTab(index: int): void { root.closeTab(index) }
     function selectTab(index: int): void { root.selectTab(index) }
+    function increaseHeight(): void { root.increaseHeight() }
+    function decreaseHeight(): void { root.decreaseHeight() }
     function retheme(): void { root.reloadTheme() }
     function syncBinds(): void { root.reloadClipboardBinds() }
   }
@@ -516,6 +569,8 @@ Item {
     function newTab(): void { root.createTab() }
     function closeTab(index: int): void { root.closeTab(index) }
     function selectTab(index: int): void { root.selectTab(index) }
+    function increaseHeight(): void { root.increaseHeight() }
+    function decreaseHeight(): void { root.decreaseHeight() }
     function retheme(): void { root.reloadTheme() }
     function syncBinds(): void { root.reloadClipboardBinds() }
   }
@@ -647,6 +702,8 @@ Item {
   }
 
   Component.onDestruction: {
+    root._destroying = true
+    watcherRestartTimer.stop()
     if (omarchyThemeWatcher.running) {
       omarchyThemeWatcher.running = false
     }
@@ -705,7 +762,6 @@ Item {
     onTriggered: {
       if (root.opened) {
         root.focusPrimed = true
-        root.refreshActiveTerminal()
       }
     }
   }
@@ -742,11 +798,6 @@ Item {
   PanelWindow {
     id: panelWindow
     visible: root.slideProgress > 0.001 || root.opened
-    onVisibleChanged: {
-      if (visible && root.opened) {
-        Qt.callLater(function() { root.refreshActiveTerminal() })
-      }
-    }
     anchors { top: true; left: true; right: true }
     margins {
       top: root.topBarOffset
@@ -802,7 +853,6 @@ Item {
     // Sliding container item
     Item {
       id: container
-      focus: true
       width: parent.width
       height: parent.height
       y: Math.round((root.slideProgress - 1.0) * parent.height)
@@ -821,7 +871,6 @@ Item {
       // Terminal Content Area (Background-only opacity shader keeps text 100% opaque)
       Item {
         id: terminalArea
-        focus: true
         width: parent.width
         y: config.tabsPosition === "top" ? tabBar.height : 0
         height: parent.height - tabBar.height
@@ -994,7 +1043,12 @@ Item {
             tooltipText: { var _ = config.language; return I18n.t("open_settings") }
             fontSize: Style.font.caption
             onClicked: {
-              Quickshell.execDetached(["omarchy-shell", "omaguake.bar", "openSettings"])
+              if (root.opened || showAnim.running || hideAnim.running) {
+                root.openSettingsAfterHide = true
+                root.hide()
+              } else {
+                Quickshell.execDetached(["omarchy-shell", "omaguake.bar", "openSettings"])
+              }
             }
           }
 

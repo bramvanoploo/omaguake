@@ -10,7 +10,7 @@ ACTION="${2:-attach}"
 
 # Validate session name: tmux-safe charset only, no leading dash (option injection)
 case "$SESSION_NAME" in
-  -*|*[!a-zA-Z0-9_.-]*)
+  ""|-*|*[!a-zA-Z0-9_.-]*)
     echo "tmux-session: rejecting invalid session name: $SESSION_NAME" >&2
     exit 1
     ;;
@@ -54,44 +54,68 @@ fi
 # If session does not exist, create it in detached mode and configure options
 if ! tmux -L "$SOCKET" has-session -t "$SESSION_NAME" 2>/dev/null; then
   DEFAULT_SHELL="${SHELL:-/bin/bash}"
-  tmux -L "$SOCKET" new-session -d -s "$SESSION_NAME" "$DEFAULT_SHELL"
-  # Hide status bar completely
-  tmux -L "$SOCKET" set-option -t "$SESSION_NAME" status off
-  # Set generous history limit
-  tmux -L "$SOCKET" set-option -t "$SESSION_NAME" history-limit 10000
-  # Avoid escape key delay
-  tmux -L "$SOCKET" set-option -t "$SESSION_NAME" escape-time 0
-  # Inherit terminal colors
-  tmux -L "$SOCKET" set-option -t "$SESSION_NAME" default-terminal "xterm-256color"
+  tmux -L "$SOCKET" \
+    new-session -d -s "$SESSION_NAME" "$DEFAULT_SHELL" \; \
+    set-option -t "$SESSION_NAME" status off \; \
+    set-option -t "$SESSION_NAME" history-limit 10000 \; \
+    set-option -t "$SESSION_NAME" escape-time 0 \; \
+    set-option -t "$SESSION_NAME" default-terminal "xterm-256color"
 fi
 
-# Enable mouse support and clipboard integration across server and session
-tmux -L "$SOCKET" set-option -t "$SESSION_NAME" mouse on
-tmux -L "$SOCKET" bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode MouseDown1Pane "select-pane ; send-keys -X cancel"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi MouseDown1Pane "select-pane ; send-keys -X cancel"
-tmux -L "$SOCKET" bind-key -T copy-mode DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode C-c send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi C-c send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode Enter send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "$CLIP_COPY"
-tmux -L "$SOCKET" bind-key -T root DoubleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY'"
-tmux -L "$SOCKET" bind-key -T root TripleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY'"
+# Configure server options, Escape safety, mouse selection, and clipboard integration in one batch
+tmux -L "$SOCKET" \
+  set-option -t "$SESSION_NAME" mouse on \; \
+  set-option -g detach-on-destroy on \; \
+  set-option -s escape-time 0 \; \
+  unbind-key -q -T root M-Escape \; \
+  unbind-key -q -T root Escape \; \
+  unbind-key -q -T copy-mode M-Escape \; \
+  unbind-key -q -T copy-mode-vi M-Escape \; \
+  bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-no-clear "$CLIP_COPY" \; \
+  bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-no-clear "$CLIP_COPY" \; \
+  bind-key -T copy-mode MouseDown1Pane "select-pane ; set -g @scroll_acc_up 0 ; set -g @scroll_acc_down 0 ; send-keys -X cancel" \; \
+  bind-key -T copy-mode-vi MouseDown1Pane "select-pane ; set -g @scroll_acc_up 0 ; set -g @scroll_acc_down 0 ; send-keys -X cancel" \; \
+  bind-key -T copy-mode DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY" \; \
+  bind-key -T copy-mode-vi DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY" \; \
+  bind-key -T copy-mode TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY" \; \
+  bind-key -T copy-mode-vi TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY" \; \
+  bind-key -T copy-mode C-c send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
+  bind-key -T copy-mode-vi C-c send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
+  bind-key -T copy-mode Enter send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
+  bind-key -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
+  bind-key -T root DoubleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY'" \; \
+  bind-key -T root TripleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY'" 2>/dev/null || true
 
 # Middle-click paste from system clipboard
 if [ -n "$CLIP_PASTE" ]; then
-  tmux -L "$SOCKET" bind-key -T root MouseDown2Pane run-shell "$CLIP_PASTE 2>/dev/null | tmux load-buffer - ; tmux paste-buffer -p"
-  tmux -L "$SOCKET" bind-key -T copy-mode MouseDown2Pane run-shell "tmux send-keys -X cancel ; $CLIP_PASTE 2>/dev/null | tmux load-buffer - ; tmux paste-buffer -p"
-  tmux -L "$SOCKET" bind-key -T copy-mode-vi MouseDown2Pane run-shell "tmux send-keys -X cancel ; $CLIP_PASTE 2>/dev/null | tmux load-buffer - ; tmux paste-buffer -p"
+  tmux -L "$SOCKET" \
+    bind-key -T root MouseDown2Pane run-shell "$CLIP_PASTE 2>/dev/null | tmux -L $SOCKET load-buffer - ; tmux -L $SOCKET paste-buffer -p" \; \
+    bind-key -T copy-mode MouseDown2Pane run-shell "tmux -L $SOCKET send-keys -X cancel ; $CLIP_PASTE 2>/dev/null | tmux -L $SOCKET load-buffer - ; tmux -L $SOCKET paste-buffer -p" \; \
+    bind-key -T copy-mode-vi MouseDown2Pane run-shell "tmux -L $SOCKET send-keys -X cancel ; $CLIP_PASTE 2>/dev/null | tmux -L $SOCKET load-buffer - ; tmux -L $SOCKET paste-buffer -p" 2>/dev/null || true
+fi
+
+# Configure scroll speed (1=slowest/smooth trackpad, 5=tmux default)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${HOME:-~}/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
+if [ ! -f "$CONFIG_FILE" ] && [ -f "$(dirname "$SCRIPT_DIR")/settings.json" ]; then
+  CONFIG_FILE="$(dirname "$SCRIPT_DIR")/settings.json"
+fi
+
+SCROLL_SPEED=3
+if [ -f "$CONFIG_FILE" ]; then
+  PARSED_SPEED="$(grep -oE '"scrollSpeed"[[:space:]]*:[[:space:]]*[1-5]' "$CONFIG_FILE" 2>/dev/null | grep -oE '[1-5]$' | head -n 1 || true)"
+  if [ -n "$PARSED_SPEED" ]; then
+    SCROLL_SPEED="$PARSED_SPEED"
+  fi
+fi
+
+if [ -x "$SCRIPT_DIR/set-scroll-speed.sh" ]; then
+  "$SCRIPT_DIR/set-scroll-speed.sh" "$SCROLL_SPEED" "$SOCKET"
 fi
 
 # Emit theme OSC color definitions to terminal
-if command -v omarchy-theme-osc >/dev/null 2>&1 && [ -f "$HOME/.local/state/omarchy/current/theme/colors.toml" ]; then
-  omarchy-theme-osc "$HOME/.local/state/omarchy/current/theme/colors.toml" 2>/dev/null || true
+if command -v omarchy-theme-osc >/dev/null 2>&1 && [ -f "${HOME:-~}/.local/state/omarchy/current/theme/colors.toml" ]; then
+  omarchy-theme-osc "${HOME:-~}/.local/state/omarchy/current/theme/colors.toml" 2>/dev/null || true
 fi
 
 # Attach to the session

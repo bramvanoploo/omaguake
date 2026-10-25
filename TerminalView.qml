@@ -7,7 +7,6 @@ import QMLTermWidget
 
 Item {
   id: root
-  focus: root.activeTab
 
   property string tabId: ""
   property string currentTitle: "bash"
@@ -25,6 +24,8 @@ Item {
   signal previousTabRequested()
   signal switchTabNumberRequested(int tabNumber)
   signal toggleRequested()
+  signal increaseHeightRequested()
+  signal decreaseHeightRequested()
 
   property string toggleKeybinding: ""
   property string schemeName: "Omaguake"
@@ -136,7 +137,12 @@ Item {
 
   function matchChord(event, chordStr) {
     if (!chordStr || !chordStr.trim()) return false
-    var parts = chordStr.split("+").map(function(s) { return s.trim().toUpperCase() })
+    var trimmed = chordStr.trim().toUpperCase()
+    var hasTrailingPlus = /(?:^|\+)\s*\+$/.test(trimmed)
+    var body = hasTrailingPlus ? trimmed.replace(/\+\s*$/, "") : trimmed
+    var parts = body.split("+").map(function(s) { return s.trim() }).filter(function(s) { return s.length > 0 })
+    if (hasTrailingPlus) parts.push("+")
+
     var expectedMods = 0
     var expectedKeyStr = ""
     for (var i = 0; i < parts.length; i++) {
@@ -152,12 +158,22 @@ Item {
     if (activeMods !== expectedMods) return false
 
     var k = event.key
+    if (expectedKeyStr === "+" || expectedKeyStr === "PLUS" || expectedKeyStr === "EQUAL" || expectedKeyStr === "=") return (k === Qt.Key_Plus || k === Qt.Key_Equal)
+    if (expectedKeyStr === "-" || expectedKeyStr === "MINUS" || expectedKeyStr === "UNDERSCORE" || expectedKeyStr === "_") return (k === Qt.Key_Minus || k === Qt.Key_Underscore)
     if (expectedKeyStr === "SPACE") return (k === Qt.Key_Space)
     if (expectedKeyStr === "GRAVE" || expectedKeyStr === "`" || expectedKeyStr === "~") return (k === Qt.Key_QuoteLeft || k === Qt.Key_AsciiTilde)
     if (expectedKeyStr === "RETURN" || expectedKeyStr === "ENTER") return (k === Qt.Key_Return || k === Qt.Key_Enter)
     if (expectedKeyStr === "TAB") return (k === Qt.Key_Tab || k === Qt.Key_Backtab)
     if (expectedKeyStr === "ESCAPE" || expectedKeyStr === "ESC") return (k === Qt.Key_Escape)
     if (expectedKeyStr === "BACKSPACE") return (k === Qt.Key_Backspace)
+    if (expectedKeyStr === "UP") return (k === Qt.Key_Up)
+    if (expectedKeyStr === "DOWN") return (k === Qt.Key_Down)
+    if (expectedKeyStr === "LEFT") return (k === Qt.Key_Left)
+    if (expectedKeyStr === "RIGHT") return (k === Qt.Key_Right)
+    if (expectedKeyStr === "PAGEUP") return (k === Qt.Key_PageUp)
+    if (expectedKeyStr === "PAGEDOWN") return (k === Qt.Key_PageDown)
+    if (expectedKeyStr === "HOME") return (k === Qt.Key_Home)
+    if (expectedKeyStr === "END") return (k === Qt.Key_End)
     if (expectedKeyStr.indexOf("F") === 0 && expectedKeyStr.length >= 2) {
       var fNum = parseInt(expectedKeyStr.slice(1), 10)
       if (fNum >= 1 && fNum <= 12) return (k === (Qt.Key_F1 + fNum - 1))
@@ -207,8 +223,6 @@ Item {
           } else {
             termSession.sendText(str)
           }
-        } else {
-          terminal.pasteClipboard()
         }
       }
     }
@@ -221,11 +235,12 @@ Item {
 
   function doPaste() {
     var sessionName = "omaguake_tab_" + (root.tabId || "1")
-    Quickshell.execDetached([
-      "tmux", "-L", "omaguake", "send-keys", "-t", sessionName, "-X", "cancel"
-    ])
     if (!pasteProc.running) {
-      pasteProc.command = ["wl-paste", "--no-newline"]
+      pasteProc.command = [
+        "sh", "-c",
+        "tmux -L omaguake send-keys -t \"$1\" -X cancel 2>/dev/null || true; exec wl-paste --no-newline",
+        "_", sessionName
+      ]
       pasteProc.running = true
     } else {
       terminal.pasteClipboard()
@@ -243,11 +258,6 @@ Item {
     color: Color.background
   }
 
-  MouseArea {
-    anchors.fill: leftMarginStrip
-    onClicked: terminal.forceActiveFocus()
-  }
-
   Rectangle {
     id: rightMarginStrip
     anchors.right: parent.right
@@ -255,11 +265,6 @@ Item {
     anchors.bottom: parent.bottom
     width: 20
     color: Color.background
-  }
-
-  MouseArea {
-    anchors.fill: rightMarginStrip
-    onClicked: terminal.forceActiveFocus()
   }
 
   QMLTermWidget {
@@ -302,7 +307,7 @@ Item {
         var sessionName = "omaguake_tab_" + (root.tabId || "1")
         Quickshell.execDetached([
           "tmux", "-L", "omaguake", "send-keys", "-t", sessionName,
-          "-X", "copy-pipe-and-cancel", "wl-copy"
+          "-X", "copy-pipe-no-clear", "wl-copy"
         ])
         event.accepted = true
         return
@@ -312,10 +317,18 @@ Item {
         return
       }
 
-      // Tab Management Shortcuts
+      // Tab Management & Panel Height Shortcuts
       if (event.modifiers & Qt.ControlModifier) {
         if (!(event.modifiers & (Qt.AltModifier | Qt.MetaModifier))) {
-          if (event.key === Qt.Key_T && !(event.modifiers & Qt.ShiftModifier)) {
+          if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
+            root.increaseHeightRequested()
+            event.accepted = true
+            return
+          } else if (event.key === Qt.Key_Minus || event.key === Qt.Key_Underscore) {
+            root.decreaseHeightRequested()
+            event.accepted = true
+            return
+          } else if (event.key === Qt.Key_T && !(event.modifiers & Qt.ShiftModifier)) {
             root.newTabRequested()
             event.accepted = true
             return
@@ -385,9 +398,6 @@ Item {
           terminal.update()
         }
       } catch(e) {}
-      if (root.activeTab) {
-        terminal.forceActiveFocus()
-      }
     }
   }
 

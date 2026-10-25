@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "bramvanoploo.omaguake",
   "name": "OmaGuake",
-  "version": "0.9.11",
+  "version": "0.9.20",
   "author": "Bram van Oploo",
   "license": "MIT",
   "description": "Guake/Yakuake-style drop-down terminal with tabs, gesture controls, and conflict-checked configuration for Omarchy",
@@ -25,6 +25,7 @@
       "heightPercent": 50,
       "widthPercent": 100,
       "overlayOpacityPercent": 90,
+      "scrollSpeed": 3,
       "tabsPosition": "bottom",
       "language": "",
       "keybinding": "",
@@ -50,6 +51,12 @@
         "type": "number",
         "label": "Terminal opacity percentage",
         "description": "Opacity percentage of the terminal background (20-100%)."
+      },
+      {
+        "key": "scrollSpeed",
+        "type": "number",
+        "label": "Scroll speed",
+        "description": "Terminal scroll speed step 1 (minimum / smooth) to 5 (maximum / tmux default)."
       },
       {
         "key": "tabsPosition",

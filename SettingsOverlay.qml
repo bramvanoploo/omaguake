@@ -17,8 +17,14 @@ PopupCard {
   property int panelHeightPercent: 50
   property int panelWidthPercent: 100
   property int overlayOpacityPercent: 90
+  property int scrollSpeed: 3
   property string tabsPosition: "bottom"
   property string selectedLanguage: ""
+
+  function scrollSpeedLabel(val) {
+    var v = Math.round(Math.max(1, Math.min(5, val || 3)))
+    return root.tr("speed_level_" + v)
+  }
 
   function tr(key, params) {
     var _ = selectedLanguage
@@ -118,6 +124,7 @@ PopupCard {
       panelHeightPercent = snapPercent(configManager.heightPercent, 50)
       panelWidthPercent = snapPercent(configManager.widthPercent, 100)
       overlayOpacityPercent = snapPercent(configManager.overlayOpacityPercent, 90)
+      scrollSpeed = Math.max(1, Math.min(5, configManager.scrollSpeed || 3))
       tabsPosition = configManager.tabsPosition || "bottom"
       selectedLanguage = configManager.language || ""
       I18n.setLanguageOverride(selectedLanguage)
@@ -127,6 +134,18 @@ PopupCard {
       gestureFingers = configManager.gestureFingers || 3
       autoHideOnFocusLoss = configManager.autoHideOnFocusLoss !== false
     }
+  }
+
+  function openRecordingModal() {
+    root.recordedChord = ""
+    root.recordedConflict = false
+    root.recordedConflictMessage = ""
+    root.recordedSuggestions = []
+    root.isCheckingRecordedKey = false
+    root.recordingDialogOpen = true
+    Qt.callLater(function() {
+      recordKeyCatcher.forceActiveFocus()
+    })
   }
 
   function refreshStatus() {
@@ -186,6 +205,7 @@ PopupCard {
         heightPercent: panelHeightPercent,
         widthPercent: panelWidthPercent,
         overlayOpacityPercent: overlayOpacityPercent,
+        scrollSpeed: scrollSpeed,
         tabsPosition: tabsPosition,
         language: selectedLanguage,
         keybinding: currentKeybinding,
@@ -264,6 +284,15 @@ PopupCard {
         }
       }
     }
+
+    Connections {
+      target: root.configManager
+      function onSettingsLoaded() {
+        if (root.open) {
+          root.loadCurrentSettings()
+        }
+      }
+    }
   }
 
   Flickable {
@@ -273,7 +302,7 @@ PopupCard {
     contentWidth: width
     clip: true
     boundsBehavior: Flickable.StopAtBounds
-    interactive: !(heightSlider.dragging || widthSlider.dragging || opacitySlider.dragging)
+    interactive: !(heightSlider.dragging || widthSlider.dragging || opacitySlider.dragging || scrollSpeedSlider.dragging)
 
     Column {
       id: contentCol
@@ -323,7 +352,7 @@ PopupCard {
             Text {
               id: versionText
               anchors.centerIn: parent
-              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.11")
+              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.20")
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -641,7 +670,98 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 5. Tab Bar Position
+    // 5. Terminal Scroll Speed Setting
+    Column {
+      width: parent.width
+      spacing: Style.space(5)
+
+      Column {
+        spacing: Style.space(1)
+        Text {
+          text: root.tr("scroll_speed", { val: root.scrollSpeed }) + " · " + root.scrollSpeedLabel(root.scrollSpeed)
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          font.bold: true
+          color: Color.foreground
+        }
+        Text {
+          text: root.tr("scroll_speed_desc")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.muted
+        }
+      }
+
+      Row {
+        width: parent.width
+        spacing: Style.spacing.sm
+
+        Item {
+          id: scrollSpeedSliderContainer
+          width: parent.width - scrollSpeedPresetRow.width - Style.spacing.sm
+          height: scrollSpeedSlider.implicitHeight
+
+          PanelSlider {
+            id: scrollSpeedSlider
+            anchors.fill: parent
+            minimum: 1
+            maximum: 5
+            step: 1
+            integer: true
+            value: root.scrollSpeed
+            onMoved: function(v) {
+              var s = Math.round(Math.max(1, Math.min(5, v)))
+              if (root.scrollSpeed !== s) {
+                root.scrollSpeed = s
+                root.saveToConfig()
+              }
+              scrollSpeedSlider.liveValue = s
+            }
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: function(wheel) {
+              scrollArea.contentY = Math.max(0, Math.min(scrollArea.contentHeight - scrollArea.height, scrollArea.contentY - wheel.angleDelta.y))
+            }
+          }
+        }
+
+        Row {
+          id: scrollSpeedPresetRow
+          spacing: Style.space(4)
+          Repeater {
+            model: [
+              { key: "speed_min", val: 1 },
+              { key: "speed_normal", val: 3 },
+              { key: "speed_max", val: 5 }
+            ]
+            delegate: Button {
+              width: Style.space(62)
+              horizontalPadding: 0
+              text: root.tr(modelData.key)
+              fontSize: Style.font.caption
+              selected: root.scrollSpeed === modelData.val
+              onClicked: {
+                if (root.scrollSpeed !== modelData.val) {
+                  root.scrollSpeed = modelData.val
+                  root.saveToConfig()
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    Rectangle {
+      width: parent.width
+      height: 1
+      color: Util.alpha(Color.foreground, 0.08)
+    }
+
+    // 6. Tab Bar Position
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -697,7 +817,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 6. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
+    // 7. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -760,16 +880,7 @@ PopupCard {
           tooltipText: isCustomAssigned
             ? root.tr("key_record_tooltip", { chord: root.currentKeybinding })
             : root.tr("key_record_default_tooltip")
-          onClicked: {
-            root.recordedChord = ""
-            root.recordedConflict = false
-            root.recordedConflictMessage = ""
-            root.recordedSuggestions = []
-            root.recordingDialogOpen = true
-            Qt.callLater(function() {
-              recordKeyCatcher.forceActiveFocus()
-            })
-          }
+          onClicked: root.openRecordingModal()
         }
 
         // Remove shortcut button
@@ -790,7 +901,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 7. Trackpad Gestures (Not applied by default, offers suggested & custom)
+    // 8. Trackpad Gestures (Not applied by default, offers suggested & custom)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -878,7 +989,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 8. Focus Behavior
+    // 9. Focus Behavior
     Item {
       width: parent.width
       height: Math.max(autoHideCol.implicitHeight, autoHideToggle.implicitHeight)
@@ -975,6 +1086,17 @@ PopupCard {
           else if (k === Qt.Key_Return || k === Qt.Key_Enter) keyStr = "RETURN"
           else if (k === Qt.Key_Tab) keyStr = "TAB"
           else if (k === Qt.Key_Backspace) keyStr = "BACKSPACE"
+          else if (k === Qt.Key_Plus || (k === Qt.Key_Equal && (event.modifiers & Qt.ShiftModifier))) keyStr = "+"
+          else if (k === Qt.Key_Equal) keyStr = "="
+          else if (k === Qt.Key_Minus || k === Qt.Key_Underscore) keyStr = "-"
+          else if (k === Qt.Key_Up) keyStr = "UP"
+          else if (k === Qt.Key_Down) keyStr = "DOWN"
+          else if (k === Qt.Key_Left) keyStr = "LEFT"
+          else if (k === Qt.Key_Right) keyStr = "RIGHT"
+          else if (k === Qt.Key_PageUp) keyStr = "PAGEUP"
+          else if (k === Qt.Key_PageDown) keyStr = "PAGEDOWN"
+          else if (k === Qt.Key_Home) keyStr = "HOME"
+          else if (k === Qt.Key_End) keyStr = "END"
           else if (k >= Qt.Key_A && k <= Qt.Key_Z) keyStr = String.fromCharCode(k)
           else if (k >= Qt.Key_0 && k <= Qt.Key_9) keyStr = String.fromCharCode(k)
           else if (event.text && event.text.length === 1 && event.text.trim().length > 0) {
@@ -1429,14 +1551,7 @@ PopupCard {
             tooltipText: "Record an alternative shortcut such as F12 or CTRL + GRAVE"
             onClicked: {
               root.keyConflictDialogOpen = false
-              root.recordedChord = ""
-              root.recordedConflict = false
-              root.recordedConflictMessage = ""
-              root.recordedSuggestions = []
-              root.recordingDialogOpen = true
-              Qt.callLater(function() {
-                recordKeyCatcher.forceActiveFocus()
-              })
+              root.openRecordingModal()
             }
           }
 
