@@ -9,7 +9,7 @@ QtObject {
 
   property string pluginDir: ""
   readonly property string homeDir: Quickshell.env("HOME") || ""
-  property string version: "0.9.20"
+  property string version: "0.9.21"
   readonly property string configPath: (homeDir ? homeDir : "~") + "/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
   readonly property string conflictCheckerScript: pluginDir + "/scripts/conflict-checker.py"
 
