@@ -5,12 +5,32 @@ Queries running tmux sessions for active command, cwd, or restores session list.
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
+import time
 
 SOCKET = "omaguake"
 SAFE_SESSION_RE = re.compile(r"^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$")
+# State files published by scripts/osc52-relay.py: tmux's pane_current_command
+# shows the relay ("python3"), so tab titles read the real foreground here.
+STATE_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}", "omaguake")
+STATE_TTL = 5.0
+
+
+def pane_state(session_name):
+    try:
+        path = os.path.join(STATE_DIR, f"pane-state-{session_name}")
+        if time.time() - os.path.getmtime(path) > STATE_TTL:
+            return None
+        with open(path) as f:
+            data = json.load(f)
+        cmd = str(data.get("command") or "")
+        cwd = str(data.get("cwd") or "")
+        return (cmd, cwd) if cmd else None
+    except (OSError, ValueError):
+        return None
 
 
 def normalize_session_name(name):
@@ -53,6 +73,9 @@ def list_sessions():
             cmd = parts[1]
             cwd = parts[2]
             title = parts[3] if len(parts) > 3 else ""
+            relay = pane_state(s_name)
+            if relay:
+                cmd, cwd = relay
 
             tab_id = s_name.replace("omaguake_tab_", "") if s_name.startswith("omaguake_tab_") else s_name
             try:
@@ -105,6 +128,11 @@ def query_session(session_name):
     cmd = parts[0] if len(parts) > 0 else ""
     cwd = parts[1] if len(parts) > 1 else ""
     title = parts[2] if len(parts) > 2 else ""
+
+    # Prefer the relay's real foreground over "python3" (the relay itself).
+    relay = pane_state(target)
+    if relay:
+        cmd, cwd = relay
 
     print(json.dumps({
         "command": cmd,

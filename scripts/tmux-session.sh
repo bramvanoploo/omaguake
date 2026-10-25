@@ -20,9 +20,15 @@ case "$ACTION" in
   *) ACTION="attach" ;;
 esac
 
-# If tmux is not available, fallback to default user shell
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# If tmux is not available, fallback to default user shell (behind the
+# OSC 52 relay so TUI clipboard copies still reach the system clipboard)
 if ! command -v tmux >/dev/null 2>&1; then
   SHELL_BIN="${SHELL:-/bin/bash}"
+  if [ -x "$SCRIPT_DIR/osc52-relay.py" ] && command -v python3 >/dev/null 2>&1; then
+    exec "$SCRIPT_DIR/osc52-relay.py" "$SHELL_BIN"
+  fi
   exec "$SHELL_BIN"
 fi
 
@@ -51,11 +57,24 @@ else
   CLIP_PASTE=""
 fi
 
-# If session does not exist, create it in detached mode and configure options
+# If session does not exist, create it in detached mode and configure options.
+# The pane runs through the OSC 52 relay so clipboard escape sequences from
+# nested SSH TUIs (e.g. strata) are applied via wl-copy/xclip; qmltermwidget
+# and tmux both ignore OSC 52, so the relay is the plugin-side fix.
 if ! tmux -L "$SOCKET" has-session -t "$SESSION_NAME" 2>/dev/null; then
   DEFAULT_SHELL="${SHELL:-/bin/bash}"
+  PANE_CMD=("$DEFAULT_SHELL")
+  if [ -x "$SCRIPT_DIR/osc52-relay.py" ] && command -v python3 >/dev/null 2>&1; then
+    export OMAGUAKE_CLIP_COPY="$CLIP_COPY"
+    export OMAGUAKE_CLIP_PASTE="$CLIP_PASTE"
+    STATE_BASE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omaguake"
+    mkdir -p "$STATE_BASE" && chmod 700 "$STATE_BASE" 2>/dev/null || true
+    # State path goes through argv: tmux panes inherit the server env, not
+    # this caller's, so a per-pane unique path cannot ride on exported vars.
+    PANE_CMD=("$SCRIPT_DIR/osc52-relay.py" --state "$STATE_BASE/pane-state-$SESSION_NAME" "$DEFAULT_SHELL")
+  fi
   tmux -L "$SOCKET" \
-    new-session -d -s "$SESSION_NAME" "$DEFAULT_SHELL" \; \
+    new-session -d -s "$SESSION_NAME" "${PANE_CMD[@]}" \; \
     set-option -t "$SESSION_NAME" status off \; \
     set-option -t "$SESSION_NAME" history-limit 10000 \; \
     set-option -t "$SESSION_NAME" escape-time 0 \; \
@@ -67,6 +86,7 @@ tmux -L "$SOCKET" \
   set-option -t "$SESSION_NAME" mouse on \; \
   set-option -g detach-on-destroy on \; \
   set-option -s escape-time 0 \; \
+  set-option -s update-environ "DISPLAY WINDOWID SSH_TTY SSH_CLIENT SSH_ASKPASS HOST HOSTNAME PWD TERM TERM_PROGRAM TERM_PROGRAMS TERMINFO KRB5CCNAME OMAGUAKE_CLIP_COPY OMAGUAKE_CLIP_PASTE" \; \
   unbind-key -q -T root M-Escape \; \
   unbind-key -q -T root Escape \; \
   unbind-key -q -T copy-mode M-Escape \; \
@@ -95,7 +115,6 @@ if [ -n "$CLIP_PASTE" ]; then
 fi
 
 # Configure scroll speed (1=slowest/smooth trackpad, 5=tmux default)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${HOME:-~}/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
 if [ ! -f "$CONFIG_FILE" ] && [ -f "$(dirname "$SCRIPT_DIR")/settings.json" ]; then
   CONFIG_FILE="$(dirname "$SCRIPT_DIR")/settings.json"
