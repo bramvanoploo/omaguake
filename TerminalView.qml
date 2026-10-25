@@ -320,15 +320,18 @@ Item {
       // Tab Management & Panel Height Shortcuts
       if (event.modifiers & Qt.ControlModifier) {
         if (!(event.modifiers & (Qt.AltModifier | Qt.MetaModifier))) {
-          if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
-            root.increaseHeightRequested()
-            event.accepted = true
-            return
-          } else if (event.key === Qt.Key_Minus || event.key === Qt.Key_Underscore) {
-            root.decreaseHeightRequested()
-            event.accepted = true
-            return
-          } else if (event.key === Qt.Key_T && !(event.modifiers & Qt.ShiftModifier)) {
+          if (event.modifiers & Qt.ShiftModifier) {
+            if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
+              root.increaseHeightRequested()
+              event.accepted = true
+              return
+            } else if (event.key === Qt.Key_Minus || event.key === Qt.Key_Underscore) {
+              root.decreaseHeightRequested()
+              event.accepted = true
+              return
+            }
+          }
+          if (event.key === Qt.Key_T && !(event.modifiers & Qt.ShiftModifier)) {
             root.newTabRequested()
             event.accepted = true
             return

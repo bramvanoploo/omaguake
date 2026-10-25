@@ -33,7 +33,7 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
   - Pinned **`+`** button on the far right of the tab bar to quickly open new tabs.
   - Tab close button (`×`) to terminate and close individual sessions cleanly.
   - Configurable tab bar position: **Bottom** (Guake style, default) or **Top** (Yakuake style).
-  - Built-in keyboard shortcuts for tab management (`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab`, `Ctrl+Shift+Tab`, `Ctrl+1..9`), panel height adjustment (`Ctrl++` / `Ctrl+-` in 5% increments), and universal copy/paste (`Super+C`/`Super+V`, `Ctrl+Shift+C`/`Ctrl+Shift+V`, and active Hyprland universal clipboard bindings).
+  - Built-in keyboard shortcuts for tab management (`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab`, `Ctrl+Shift+Tab`, `Ctrl+1..9`), panel height adjustment (`CTRL + SHIFT + +` / `CTRL + SHIFT + -` in 5% increments), and universal copy/paste (`Super+C`/`Super+V`, `Ctrl+Shift+C`/`Ctrl+Shift+V`, and active Hyprland universal clipboard bindings).
 
 - **Summon Triggers**:
   - Global Keybinding: **`CTRL + SPACE`** suggested (or record any custom shortcut).
@@ -81,7 +81,7 @@ omarchy plugin remove bramvanoploo.omaguake
 
 Right-click the OmaGuake bar icon (or click `⚙` in the terminal tab bar) to open the configuration overlay (all changes apply immediately in real time):
 - **Interface Language**: Follow system locale or choose from 15+ supported languages.
-- **Height**: Adjust dropdown panel height (20% – 100%, in 5% increments).
+- **Height**: Adjust dropdown panel height (20% – 100%, in 5% increments; can also be adjusted on the fly while the terminal is focused using **`CTRL + SHIFT + +`** to increase and **`CTRL + SHIFT + -`** to decrease).
 - **Width**: Adjust dropdown panel width (20% – 100%, default 100%, in 5% increments), centered horizontally.
 - **Opacity**: Adjust terminal background opacity (20% – 100%, in 5% increments) while keeping terminal text and the tab bar 100% opaque.
 - **Scroll Speed**: Adjust mouse wheel and trackpad scroll speed across 5 levels (from smooth/slow to tmux default).
