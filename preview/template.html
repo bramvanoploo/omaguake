@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OmaGuake Preview Banner</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background-color: #0b0e14;
+    font-family: "Liberation Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #f1f5f9;
+    position: relative;
+  }
+
+  /* Ambient background layers */
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+  }
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-tl {
+    width: 1100px; height: 1100px;
+    left: -350px; top: -350px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(56, 189, 248, 0) 62%);
+  }
+  .glow-tr {
+    width: 1100px; height: 1100px;
+    right: -300px; top: -250px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.10) 0%, rgba(56, 189, 248, 0) 60%);
+  }
+  .glow-b {
+    width: 1300px; height: 900px;
+    right: -100px; bottom: -450px;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.10) 0%, rgba(139, 92, 246, 0) 60%);
+  }
+
+  /* Left column */
+  .left {
+    position: absolute;
+    left: 110px; top: 44px;
+    width: 740px;
+    z-index: 2;
+  }
+  .pills { display: flex; gap: 14px; }
+  .pill {
+    display: inline-flex; align-items: center;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 1.5px;
+  }
+  .pill-cyan {
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.13);
+  }
+  .pill-gray {
+    border: 1px solid #334155;
+    color: #94a3b8;
+    background: rgba(30, 41, 59, 0.35);
+  }
+  .head-row { display: flex; align-items: center; gap: 24px; margin-top: 36px; }
+  .tile {
+    width: 64px; height: 64px; flex-shrink: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    background: rgba(56, 189, 248, 0.07);
+    display: grid; place-items: center;
+  }
+  h1 { font-size: 46px; font-weight: 700; color: #f8fafc; letter-spacing: -0.5px; }
+  .subtitle {
+    margin-top: 18px;
+    width: 710px;
+    font-size: 19px;
+    line-height: 1.55;
+    color: #94a3b8;
+  }
+  .cards { margin-top: 32px; display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    display: flex; gap: 16px;
+    padding: 15px 22px 15px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(56, 189, 248, 0.20);
+    background: rgba(30, 41, 59, 0.30);
+  }
+  .card .cicon {
+    width: 40px; height: 40px; flex-shrink: 0;
+    border-radius: 10px;
+    border: 1px solid rgba(56, 189, 248, 0.30);
+    background: rgba(56, 189, 248, 0.07);
+    display: grid; place-items: center;
+  }
+  .card .ctext { padding-top: 1px; }
+  .card h3 {
+    display: inline;
+    font-size: 19px; font-weight: 700; color: #f1f5f9;
+  }
+  .badge {
+    display: inline-block;
+    margin-left: 12px;
+    padding: 3px 9px;
+    border-radius: 5px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    font-size: 11.5px; font-weight: 700;
+    letter-spacing: 1px;
+    vertical-align: 3px;
+  }
+  .card p {
+    margin-top: 7px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: #94a3b8;
+  }
+  .footer {
+    position: absolute;
+    left: 110px; bottom: 46px;
+    font-size: 15px;
+    color: #64748b;
+    z-index: 2;
+  }
+
+  /* Right: mock window with live captures */
+  .window {
+    position: absolute;
+    left: 830px; top: 55px;
+    width: 1030px; height: 529px;
+    border-radius: 10px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    background: rgba(2, 6, 23, 0.60);
+    box-shadow: 0 20px 80px rgba(2, 6, 23, 0.55);
+    z-index: 1;
+  }
+  .titlebar {
+    height: 35px;
+    display: flex; align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+  .dot-r { background: #ef4444; }
+  .dot-y { background: #f59e0b; }
+  .dot-g { background: #10b981; }
+  .title {
+    margin-left: 16px;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+  .termband {
+    position: absolute;
+    left: 27px; top: 43px;
+    width: 974px; height: 471px;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .termband img { width: 100%; height: 100%; display: block; }
+  .settingscard {
+    position: absolute;
+    left: 1425px; top: 271px;
+    width: 434px; height: 762px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow:
+      0 0 70px rgba(56, 189, 248, 0.22),
+      0 0 18px rgba(56, 189, 248, 0.15),
+      0 24px 70px rgba(2, 6, 23, 0.6);
+    z-index: 3;
+  }
+  .settingscard img { width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="glow glow-tl"></div>
+  <div class="glow glow-tr"></div>
+  <div class="glow glow-b"></div>
+
+  <div class="left">
+    <div class="pills">
+      <span class="pill pill-cyan">OMARCHY PLUGIN</span>
+      <span class="pill pill-gray">v{{VERSION}}</span>
+    </div>
+    <div class="head-row">
+      <div class="tile">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+      </div>
+      <h1>OmaGuake</h1>
+    </div>
+    <div class="subtitle">
+      Quake-style drop-down terminal for Omarchy, powered by native QMLTermWidget
+      emulation with persistent tmux sessions.
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="cicon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+            <line x1="6" y1="10" x2="6" y2="10"></line>
+            <line x1="10" y1="10" x2="10" y2="10"></line>
+            <line x1="14" y1="10" x2="14" y2="10"></line>
+            <line x1="18" y1="10" x2="18" y2="10"></line>
+            <line x1="7" y1="14" x2="17" y2="14"></line>
+          </svg>
+        </div>
+        <div class="ctext">
+          <h3>Global Shortcut Keybinding</h3><span class="badge">CTRL + SPACE</span>
+          <p>Instant drop-down toggle from anywhere. One-click suggested binding or record any custom shortcut with live conflict detection.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cicon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="3" width="14" height="18" rx="3"></rect>
+            <line x1="12" y1="11" x2="12" y2="17"></line>
+            <line x1="5" y1="11" x2="19" y2="11"></line>
+          </svg>
+        </div>
+        <div class="ctext">
+          <h3>Touchpad Gestures</h3><span class="badge">3 &amp; 4 FINGERS</span>
+          <p>Natural Mac-style trackpad navigation. Swipe down to summon the terminal and swipe up to smoothly slide it away.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cicon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"></path>
+            <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path>
+          </svg>
+        </div>
+        <div class="ctext">
+          <h3>Hide on Focus Loss</h3><span class="badge">AUTO-DISMISS</span>
+          <p>Clicking outside the overlay or refocusing other windows immediately and gracefully hides the terminal.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cicon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+            <path d="M3 7l2.5-3h5L8 7"></path>
+            <path d="M10 7l2.5-3h5L15 7"></path>
+          </svg>
+        </div>
+        <div class="ctext">
+          <h3>Multi-Tab Terminal Sessions</h3><span class="badge">GUAKE &amp; YAKUAKE</span>
+          <p>Tabs show the current directory and last command, and survive shell restarts via tmux. Place the tab bar at the bottom or top.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cicon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="7" x2="20" y2="7"></line>
+            <circle cx="9" cy="7" r="2.2" fill="#0b1220"></circle>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <circle cx="15" cy="12" r="2.2" fill="#0b1220"></circle>
+            <line x1="4" y1="17" x2="20" y2="17"></line>
+            <circle cx="7" cy="17" r="2.2" fill="#0b1220"></circle>
+          </svg>
+        </div>
+        <div class="ctext">
+          <h3>Size, Opacity &amp; Scroll Speed</h3><span class="badge">CTRL++ / CTRL+-</span>
+          <p>Configure panel height, width, background-only translucency with desktop blur, and 5-step scroll speed.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cicon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <path d="M12 3c2.5 2.4 4 5.5 4 9s-1.5 6.6-4 9c-2.5-2.4-4-5.5-4-9s1.5-6.6 4-9z"></path>
+          </svg>
+        </div>
+        <div class="ctext">
+          <h3>Multilingual Interface</h3><span class="badge">16 LANGUAGES</span>
+          <p>Follows your system locale by default with an English fallback, or pick a language manually in the settings panel.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">MIT License&nbsp;&nbsp;&bull;&nbsp;&nbsp;Built for Omarchy Linux with Quickshell &amp; Hyprland</div>
+
+  <div class="window">
+    <div class="titlebar">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="title">OmaGuake Drop-down Terminal — fastfetch</span>
+    </div>
+    <div class="termband"><img src="term_capture.png" alt=""></div>
+  </div>
+
+  <div class="settingscard"><img src="settings_capture.png" alt=""></div>
+</body>
+</html>
