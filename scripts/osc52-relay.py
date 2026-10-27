@@ -12,6 +12,7 @@ import os
 import pty
 import selectors
 import shlex
+import shutil
 import signal
 import struct
 import subprocess
@@ -24,7 +25,12 @@ CLI = b"\x1b]52;"  # OSC 52 introducer
 B64CHARS = frozenset(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=?"
 )
-MAX_PAYLOAD = 1 << 20  # 1 MiB sanity cap per sequence
+MAX_PAYLOAD = 1 << 20  # 1 MiB sanity cap per sequence (write)
+MAX_READ_BYTES = 64 * 1024  # 64 KiB cap per clipboard-read query response (output limit)
+READ_TIMEOUT = 1.0  # 1.0s timeout for paste command execution (time limit)
+COPY_TIMEOUT = 2.0  # 2.0s timeout for copy command execution
+MIN_READ_INTERVAL = 1.0  # Rate limit: minimum seconds between permitted reads (time limit)
+MAX_IDLE_SECONDS = 30.0  # Require user activity within 30s for permitted read
 
 
 def echo_ctl_form(data):
@@ -39,9 +45,28 @@ def echo_ctl_form(data):
     return bytes(out)
 
 
-def clip_cmds():
-    copy = shlex.split(os.environ.get("OMAGUAKE_CLIP_COPY", "wl-copy"))
-    paste = shlex.split(os.environ.get("OMAGUAKE_CLIP_PASTE", "wl-paste -n"))
+def clip_cmds(allow_read=False):
+    copy_env = os.environ.get("OMAGUAKE_CLIP_COPY")
+    if copy_env:
+        copy = shlex.split(copy_env)
+    elif shutil.which("wl-copy"):
+        copy = ["wl-copy"]
+    elif shutil.which("xclip"):
+        copy = ["xclip", "-selection", "clipboard"]
+    else:
+        copy = ["cat"]
+
+    # Security: clipboard reading is rejected by default.
+    # copy-to-clipboard support must not grant clipboard-read access.
+    paste = None
+    if allow_read:
+        paste_env = os.environ.get("OMAGUAKE_CLIP_PASTE")
+        if paste_env:
+            paste = shlex.split(paste_env)
+        elif shutil.which("wl-paste"):
+            paste = ["wl-paste", "-n"]
+        elif shutil.which("xclip"):
+            paste = ["xclip", "-selection", "clipboard", "-o"]
     return copy, paste
 
 
@@ -57,6 +82,8 @@ def fg_info(master):
     """Foreground process group of the inner PTY -> (command, cwd)."""
     try:
         (pgrp,) = struct.unpack("i", fcntl.ioctl(master, termios.TIOCGPGRP, b"\0" * 4))
+        if pgrp <= 0:
+            return None
         with open(f"/proc/{pgrp}/comm", "rb") as f:
             comm = f.read().decode("utf-8", "replace").strip()
         cwd = os.readlink(f"/proc/{pgrp}/cwd")
@@ -72,9 +99,13 @@ def write_state(path, info):
         d = os.path.dirname(path)
         os.makedirs(d, mode=0o700, exist_ok=True)
         tmp = f"{path}.tmp{os.getpid()}"
-        with open(tmp, "w") as f:
+        fd = os.open(
+            tmp,
+            os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+        with open(fd, "w", encoding="utf-8") as f:
             json.dump({"command": info[0], "cwd": info[1]}, f)
-        os.chmod(tmp, 0o600)
         os.replace(tmp, path)
     except OSError:
         pass
@@ -149,34 +180,106 @@ def filter_osc52(buf):
         i = e + term
 
 
-def handle_event(params, payload, master, copy_cmd, paste_cmd):
+def handle_event(
+    params,
+    payload,
+    master,
+    copy_cmd,
+    paste_cmd=None,
+    allow_read=False,
+    last_read_state=None,
+    last_key=0.0,
+):
+    """Handles an OSC 52 event.
+    - Write (payload is bytes): decodes and applies to local clipboard via copy_cmd.
+    - Read query (payload is None): REJECTED by default to prevent remote terminal output
+      from reading local desktop clipboard contents. If explicitly permitted, applies
+      output byte cap, command execution timeout, rate limits, and idle checks.
+    """
     try:
         if payload is not None:
-            data = base64.b64decode(payload)
-            if data:
-                subprocess.run(copy_cmd, input=data, check=False)
-        else:
+            if len(payload) > MAX_PAYLOAD:
+                return None
             try:
-                cp = subprocess.run(paste_cmd, capture_output=True, check=False)
-            except OSError:
-                cp = subprocess.run("true", shell=True, capture_output=True)
-            b64 = base64.b64encode(cp.stdout)
-            resp = b"\x1b]52;" + params + b";" + b64 + b"\x07"
-            # Disable ECHO around the write; the relay also strips the exact
-            # response bytes if the PTY echoes them anyway (race/tcsetattr
-            # failure), so the response never leaks into the app's output.
-            try:
-                attrs = termios.tcgetattr(master)
-                attrs[3] &= ~termios.ECHO
-                termios.tcsetattr(master, termios.TCSANOW, attrs)
-                echo_off = True
-            except termios.error:
-                echo_off = False
+                data = base64.b64decode(payload, validate=True)
+            except Exception:
+                return None
+            if data and copy_cmd:
+                try:
+                    subprocess.run(copy_cmd, input=data, check=False, timeout=COPY_TIMEOUT)
+                except (subprocess.SubprocessError, OSError):
+                    pass
+            return None
+
+        # Clipboard query (read) request:
+        # Security: reject by default. Remote terminal output must not read
+        # local desktop clipboard contents without an explicit user paste action.
+        if not allow_read or not paste_cmd:
+            return None
+
+        now = time.monotonic()
+        # Rate limit check (minimum interval between permitted reads)
+        if last_read_state is not None:
+            last_time = last_read_state.get("time", 0.0)
+            if now - last_time < MIN_READ_INTERVAL:
+                return None
+
+        # User activity check (must have typed within MAX_IDLE_SECONDS)
+        if last_key > 0 and (now - last_key) > MAX_IDLE_SECONDS:
+            return None
+
+        # Validate params to prevent escape sequence injection (only allow safe characters)
+        safe_params = bytearray()
+        for b in params:
+            if (0x30 <= b <= 0x39) or (0x41 <= b <= 0x5A) or (0x61 <= b <= 0x7A) or b in b"+-":
+                safe_params.append(b)
+            if len(safe_params) >= 16:
+                break
+        valid_params = bytes(safe_params) if safe_params else b"c"
+
+        try:
+            cp = subprocess.run(
+                paste_cmd,
+                capture_output=True,
+                check=False,
+                timeout=READ_TIMEOUT,
+            )
+            stdout = cp.stdout or b""
+        except (subprocess.SubprocessError, OSError):
+            return None
+
+        # Output limit: enforce max byte cap
+        stdout = stdout[:MAX_READ_BYTES]
+
+        if last_read_state is not None:
+            last_read_state["time"] = now
+
+        b64 = base64.b64encode(stdout)
+        resp = b"\x1b]52;" + valid_params + b";" + b64 + b"\x07"
+
+        # Disable ECHO around the write; the relay also strips the exact
+        # response bytes if the PTY echoes them anyway (race/tcsetattr
+        # failure), so the response never leaks into the app's output.
+        echo_off = False
+        attrs = None
+        try:
+            attrs = termios.tcgetattr(master)
+            attrs[3] &= ~termios.ECHO
+            termios.tcsetattr(master, termios.TCSANOW, attrs)
+            echo_off = True
+        except termios.error:
+            echo_off = False
+
+        try:
             os.write(master, resp)
-            if echo_off:
-                attrs[3] |= termios.ECHO
-                termios.tcsetattr(master, termios.TCSANOW, attrs)
-            return resp
+        finally:
+            if echo_off and attrs is not None:
+                try:
+                    attrs[3] |= termios.ECHO
+                    termios.tcsetattr(master, termios.TCSANOW, attrs)
+                except termios.error:
+                    pass
+        return resp
     except Exception:
         pass
     return None
@@ -184,19 +287,38 @@ def handle_event(params, payload, master, copy_cmd, paste_cmd):
 
 def main():
     argv_state = None
+    allow_read = os.environ.get("OMAGUAKE_CLIP_ALLOW_READ", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     args = sys.argv[1:]
     # Leading options (tmux passes pane commands as per-pane argv):
-    while args and args[0] == "--state":
-        if len(args) < 2:
-            sys.stderr.write("usage: osc52-relay.py --state PATH shell [args...]\n")
-            sys.exit(2)
-        argv_state = args[1]
-        args = args[2:]
+    while args and args[0].startswith("--"):
+        if args[0] == "--state":
+            if len(args) < 2:
+                sys.stderr.write("usage: osc52-relay.py [--state PATH] [--allow-read] shell [args...]\n")
+                sys.exit(2)
+            argv_state = args[1]
+            args = args[2:]
+        elif args[0] == "--allow-read":
+            allow_read = True
+            args = args[1:]
+        elif args[0] in ("--no-read", "--no-allow-read"):
+            allow_read = False
+            args = args[1:]
+        elif args[0] == "--":
+            args = args[1:]
+            break
+        else:
+            break
     if len(args) < 1:
-        sys.stderr.write("usage: osc52-relay.py [--state PATH] shell [args...]\n")
+        sys.stderr.write("usage: osc52-relay.py [--state PATH] [--allow-read] shell [args...]\n")
         sys.exit(2)
     argv = args
-    copy_cmd, paste_cmd = clip_cmds()
+    copy_cmd, paste_cmd = clip_cmds(allow_read)
+    read_state = {"time": 0.0}
 
     try:
         winsize = fcntl.ioctl(0, termios.TIOCGWINSZ, b"\0" * 8)
@@ -294,7 +416,16 @@ def main():
             if out:
                 os.write(1, out)
             for params, payload in events:
-                resp = handle_event(params, payload, master, copy_cmd, paste_cmd)
+                resp = handle_event(
+                    params,
+                    payload,
+                    master,
+                    copy_cmd,
+                    paste_cmd,
+                    allow_read=allow_read,
+                    last_read_state=read_state,
+                    last_key=last_key,
+                )
                 if resp:
                     pending_echo = resp
         # Publish the pane's real foreground command/cwd (tmux sees the relay
@@ -323,7 +454,16 @@ def main():
             if out:
                 os.write(1, out)
             for params, payload in events:
-                handle_event(params, payload, master, copy_cmd, paste_cmd)
+                handle_event(
+                    params,
+                    payload,
+                    master,
+                    copy_cmd,
+                    paste_cmd,
+                    allow_read=allow_read,
+                    last_read_state=read_state,
+                    last_key=last_key,
+                )
             done = True
             status = os.WEXITSTATUS(st) if os.WIFEXITED(st) else 128 + os.WTERMSIG(st)
 

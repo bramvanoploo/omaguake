@@ -34,7 +34,7 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
   - Tab close button (`×`) to terminate and close individual sessions cleanly.
   - Configurable tab bar position: **Bottom** (Guake style, default) or **Top** (Yakuake style).
   - Built-in keyboard shortcuts for tab management (`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab`, `Ctrl+Shift+Tab`, `Ctrl+1..9`), panel height adjustment (`CTRL + SHIFT + +` / `CTRL + SHIFT + -` in 5% increments), and universal copy/paste (`Super+C`/`Super+V`, `Ctrl+Shift+C`/`Ctrl+Shift+V`, and active Hyprland universal clipboard bindings).
-  - **OSC 52 clipboard passthrough**: TUIs inside nested SSH sessions (e.g. `strata launch`) can copy to the local system clipboard via OSC 52 escape sequences; a lightweight relay (`scripts/osc52-relay.py`) applies them with `wl-copy`/`xclip`, since `qmltermwidget` and tmux both ignore OSC 52. Tab title indicators (command/directory) keep reporting the real foreground process through the relay.
+  - **OSC 52 clipboard passthrough**: TUIs inside nested SSH sessions (e.g. `strata launch`) can copy to the local system clipboard via OSC 52 escape sequences; a lightweight relay (`scripts/osc52-relay.py`) applies them with `wl-copy`/`xclip`, since `qmltermwidget` and tmux both ignore OSC 52. Tab title indicators (command/directory) keep reporting the real foreground process through the relay. Clipboard-read queries are rejected by default for security to prevent remote terminal output from reading local clipboard contents without an explicit user paste action.
 
 - **Summon Triggers**:
   - Global Keybinding: **`CTRL + SPACE`** suggested (or record any custom shortcut).

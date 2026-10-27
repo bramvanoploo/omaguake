@@ -66,7 +66,14 @@ if ! tmux -L "$SOCKET" has-session -t "$SESSION_NAME" 2>/dev/null; then
   PANE_CMD=("$DEFAULT_SHELL")
   if [ -x "$SCRIPT_DIR/osc52-relay.py" ] && command -v python3 >/dev/null 2>&1; then
     export OMAGUAKE_CLIP_COPY="$CLIP_COPY"
-    export OMAGUAKE_CLIP_PASTE="$CLIP_PASTE"
+    # Security: Copy-to-clipboard support must not grant clipboard-read access.
+    # Remote terminal output must not read the local clipboard without an explicit user paste action.
+    # Clipboard reads are rejected by default; only export OMAGUAKE_CLIP_PASTE if explicitly enabled.
+    if [ "${OMAGUAKE_CLIP_ALLOW_READ:-0}" = "1" ] || [ "${OMAGUAKE_CLIP_ALLOW_READ:-}" = "true" ]; then
+      export OMAGUAKE_CLIP_PASTE="$CLIP_PASTE"
+    else
+      unset OMAGUAKE_CLIP_PASTE 2>/dev/null || true
+    fi
     STATE_BASE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omaguake"
     mkdir -p "$STATE_BASE" && chmod 700 "$STATE_BASE" 2>/dev/null || true
     # State path goes through argv: tmux panes inherit the server env, not
@@ -86,7 +93,7 @@ tmux -L "$SOCKET" \
   set-option -t "$SESSION_NAME" mouse on \; \
   set-option -g detach-on-destroy on \; \
   set-option -s escape-time 0 \; \
-  set-option -s update-environ "DISPLAY WINDOWID SSH_TTY SSH_CLIENT SSH_ASKPASS HOST HOSTNAME PWD TERM TERM_PROGRAM TERM_PROGRAMS TERMINFO KRB5CCNAME OMAGUAKE_CLIP_COPY OMAGUAKE_CLIP_PASTE" \; \
+  set-option -s update-environ "DISPLAY WINDOWID SSH_TTY SSH_CLIENT SSH_ASKPASS HOST HOSTNAME PWD TERM TERM_PROGRAM TERM_PROGRAMS TERMINFO KRB5CCNAME OMAGUAKE_CLIP_COPY" \; \
   unbind-key -q -T root M-Escape \; \
   unbind-key -q -T root Escape \; \
   unbind-key -q -T copy-mode M-Escape \; \
