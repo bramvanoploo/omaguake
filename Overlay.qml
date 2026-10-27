@@ -1037,6 +1037,17 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           spacing: 6
 
+          // Pin button: toggles "Auto-hide on focus loss".
+          // Accent-colored (same as active tab border) = pinned = auto-hide disabled.
+          Button {
+            readonly property bool pinned: !config.autoHideOnFocusLoss
+            iconText: "\uf276" // pin (diagonal pushpin)
+            iconSize: Style.font.caption
+            foreground: pinned ? Color.accent : Color.foreground
+            tooltipText: { var _ = config.language; return I18n.t("pin_tooltip") + (pinned ? " " + I18n.t("pin_pinned") : "") }
+            onClicked: config.saveSettings({ autoHideOnFocusLoss: !config.autoHideOnFocusLoss })
+          }
+
           // Settings button
           Button {
             text: "⚙"
