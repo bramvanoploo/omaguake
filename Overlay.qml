@@ -184,6 +184,19 @@ Item {
     }
   }
 
+  // Dropdown invariant: opening the panel always shows the live prompt.
+  // A pane left in tmux copy-mode (scrollback frozen on screen) would
+  // otherwise reappear stuck on old output every time the panel opens.
+  function cancelActiveTabCopyMode() {
+    if (root.currentTabIndex < 0 || root.currentTabIndex >= root.tabs.length) {
+      return
+    }
+    var item = root.tabs[root.currentTabIndex].termItem
+    if (item && typeof item.cancelTmuxCopyMode === "function") {
+      item.cancelTmuxCopyMode()
+    }
+  }
+
   onCurrentTabIndexChanged: {
     root.updateTerminalVisibility()
     Qt.callLater(function() { root.refreshActiveTerminal() })
@@ -201,6 +214,7 @@ Item {
     showAnim.start()
     root.updateTerminalVisibility()
     Qt.callLater(function() { root.refreshActiveTerminal() })
+    Qt.callLater(function() { root.cancelActiveTabCopyMode() })
   }
 
   function hide() {
@@ -227,6 +241,12 @@ Item {
       }
     }
     var newId = (specifiedId !== undefined && specifiedId !== null) ? Number(specifiedId) : nextTabId++
+    if (!Number.isFinite(newId)) {
+      // Non-numeric session ids (stray sessions on the tmux socket) would
+      // otherwise produce "omaguake_tab_NaN" sessions on restore.
+      console.warn("Ignoring invalid tab id from restore: " + specifiedId)
+      newId = nextTabId++
+    }
     if (newId >= nextTabId) {
       nextTabId = newId + 1
     }
@@ -258,6 +278,10 @@ Item {
       root.updateLastCommandById(newId, cmdText)
     })
     term.processExited.connect(function(code) {
+      // A process exit during plugin/shell teardown is qmltermwidget killing
+      // the tmux attach client, not the pane closing; killing the tmux
+      // session here would destroy persisted tabs on every reload.
+      if (root._destroying) return
       root.closeTabById(newId)
     })
     term.newTabRequested.connect(function() {

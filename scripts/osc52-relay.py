@@ -180,6 +180,139 @@ def filter_osc52(buf):
         i = e + term
 
 
+class AltScreenGuard:
+    """Neutralize unpaired alt-screen leaves in pane output.
+
+    Leaving the alternate screen (ESC [ ? 47/1047/1049 l) performs a DECRC
+    cursor restore, and any alt-screen enter earlier in the pane's output
+    (e.g. a remote fish login probe wrapping its terminal queries in a
+    ?1049h/?1049l pair) leaves that slot holding a position inside old
+    output. On tmux the 1049 restore slot is separate from DECSC, so an
+    unpaired leave - routine at ssh exit, since ssh client cleanup emits
+    ?1049l unconditionally after dropping the connection (OpenSSH resets
+    modes defensively; Omarchy's ssh wrapper likewise) - teleports the
+    cursor into the middle of closed-session output and the next prompt
+    prints on top of it. A DECSC pre-pin cannot help: tmux's 1049 leave
+    ignores the DECSC slot.
+
+    Reference behavior (xterm): a leave with no outstanding enter on the
+    primary screen is ignored, and the enter/leave slots nest per mode
+    (each leave pops the most recent enter). The guard emulates both:
+    enters go on a small stack; a leave pops it (intended restore); a
+    leave with an empty stack is dropped outright, taking its spurious
+    DECRC with it. Unbalanced nesting happens in practice: a remote
+    fish login probe arms ?1049h around its terminal queries and emits
+    the matching ?1049l only when it receives the query responses
+    (qmltermwidget/tmux do not answer them), so the probe's enter is
+    still outstanding when ssh-exit cleanup leaves arrive.
+
+    A leave preceded by the program's own DECSC (ESC 7) still passes
+    through: that is terminfo-style save/restore where the DECRC is
+    intended.
+
+    Only pane process output passes through here (the relay is the pane's
+    command wrapper), so the tracking matches what tmux will interpret.
+    """
+
+    ENTER_MODES = (47, 1047, 1049)
+
+    def __init__(self):
+        self.stack = []  # alt modes entered and not yet left (cap ~16)
+        self.saved_pending = False  # last DECSC (ESC 7) not yet consumed by DECRC
+        self.pending = b""  # head of a sequence split across read() calls
+
+    @staticmethod
+    def _private_modes(params):
+        if not params.startswith(b"?"):
+            return ()
+        modes = []
+        for part in params[1:].split(b";"):
+            if part.isdigit():
+                modes.append(int(part))
+        return modes
+
+    def feed(self, data, flush=False):
+        """Return bytes safe to emit now; hold any partial sequence."""
+        data = self.pending + data
+        self.pending = b""
+        out = bytearray()
+        i, n = 0, len(data)
+        while i < n:
+            idx = data.find(b"\x1b", i)
+            if idx < 0:
+                out += data[i:]
+                break
+            out += data[i:idx]
+            i = idx
+            if i + 1 >= n:
+                if flush:
+                    out += data[i:]
+                    break
+                self.pending = data[i:]
+                break
+            c2 = data[i + 1]
+            if c2 == 0x5B:  # ESC [ : CSI ... final
+                k = i + 2
+                while k < n and 0x20 <= data[k] <= 0x3F:  # params/intermediates
+                    k += 1
+                if k >= n:
+                    if flush:
+                        out += data[i:]
+                        break
+                    self.pending = data[i:]
+                    break
+                final = data[k]
+                seq = data[i:k + 1]
+                if final in (0x68, 0x6C) and k - (i + 2) <= 64:
+                    alt = [m for m in self._private_modes(data[i + 2:k]) if m in self.ENTER_MODES]
+                    if alt:
+                        if final == 0x68:  # set: enter alternate screen
+                            self.stack.append(alt[-1])
+                            if len(self.stack) > 16:
+                                del self.stack[:-16]
+                            self.saved_pending = False
+                        elif self.stack:  # paired leave: intended
+                            self.stack.pop()
+                            self.saved_pending = False
+                        elif not self.saved_pending:
+                            # Unpaired leave with no live save: reference
+                            # behavior on the primary screen is to ignore
+                            # it, and tmux would run a stale DECRC. Drop.
+                            i = k + 1
+                            continue
+                out += seq
+                i = k + 1
+            elif c2 in (0x5D, 0x50, 0x58, 0x5E, 0x5F):  # OSC/DCS/SOS/PM/APC string
+                # Consume whole string so payload bytes are never mistaken
+                # for escape sequence structure (tmux treats them the same).
+                j = i + 2
+                end = -1
+                while j < n:
+                    if data[j] == 0x07:
+                        end = j + 1
+                        break
+                    if data[j] == 0x1B and j + 1 < n and data[j + 1] == 0x5C:
+                        end = j + 2
+                        break
+                    j += 1
+                if end < 0:
+                    if flush:
+                        out += data[i:]
+                        break
+                    self.pending = data[i:]
+                    break
+                out += data[i:end]
+                i = end
+            else:  # other single-char escape
+                if c2 == 0x37:  # ESC 7 (DECSC): program saved current pos
+                    self.saved_pending = True
+                elif c2 == 0x38:  # ESC 8 (DECRC): consumed the save
+                    self.saved_pending = False
+                out += data[i:i + 2]
+                i += 2
+        return bytes(out)
+
+
 def handle_event(
     params,
     payload,
@@ -374,6 +507,7 @@ def main():
     sel.register(master, selectors.EVENT_READ)
 
     buf = b""
+    guard = AltScreenGuard()
     pending_echo = b""
     status = 0
     done = False
@@ -413,6 +547,7 @@ def main():
                         break
                 pending_echo = b""
             out, buf, events = filter_osc52(buf)
+            out = guard.feed(out)
             if out:
                 os.write(1, out)
             for params, payload in events:
@@ -451,6 +586,7 @@ def main():
                 pass
             # Drain through the filter so a trailing OSC 52 still applies.
             out, buf, events = filter_osc52(buf + b"\0")
+            out = guard.feed(out, flush=True)
             if out:
                 os.write(1, out)
             for params, payload in events:
@@ -473,7 +609,7 @@ def main():
         except OSError:
             pass
     if buf:
-        os.write(1, buf)
+        os.write(1, guard.feed(buf, flush=True))
     sys.exit(status)
 
 

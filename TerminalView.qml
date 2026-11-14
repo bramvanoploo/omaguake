@@ -20,6 +20,14 @@ Item {
 
   signal newTabRequested()
   signal closeTabRequested()
+
+  // Set true when this item is being torn down (plugin reload / shell
+  // restart). qmltermwidget kills its child (the tmux attach client) when
+  // the session object is destroyed, which fires session.onFinished. That
+  // exit is NOT the pane closing, so it must not trigger the auto-close
+  // path, or teardown would tmux-kill the very session we persist across
+  // reloads (and with it every other tab, via tmux exit-empty).
+  property bool _destroying: false
   signal nextTabRequested()
   signal previousTabRequested()
   signal switchTabNumberRequested(int tabNumber)
@@ -249,6 +257,24 @@ Item {
 
   property string pluginDir: String(Qt.resolvedUrl(".")).replace("file://", "").replace(/\/$/, "")
 
+  // Clicks that land on the decorative margin strips must behave like clicks
+  // inside the terminal: return keyboard focus to the terminal and leave tmux
+  // copy-mode. Without this, a click next to the text area is swallowed here
+  // and the pane stays stuck in copy-mode swallowing keystrokes.
+  function cancelTmuxCopyMode() {
+    var sessionName = "omaguake_tab_" + (root.tabId || "1")
+    Quickshell.execDetached([
+      "tmux", "-L", "omaguake", "if-shell", "-F", "-t", sessionName,
+      "#{pane_in_mode}", "send-keys -t " + sessionName + " -X cancel"
+    ])
+  }
+
+  function focusTerminal() {
+    if (root.activeTab) {
+      terminal.forceActiveFocus()
+    }
+  }
+
   Rectangle {
     id: leftMarginStrip
     anchors.left: parent.left
@@ -256,6 +282,14 @@ Item {
     anchors.bottom: parent.bottom
     width: 20
     color: Color.background
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: {
+        root.focusTerminal()
+        root.cancelTmuxCopyMode()
+      }
+    }
   }
 
   Rectangle {
@@ -265,6 +299,14 @@ Item {
     anchors.bottom: parent.bottom
     width: 20
     color: Color.background
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: {
+        root.focusTerminal()
+        root.cancelTmuxCopyMode()
+      }
+    }
   }
 
   QMLTermWidget {
@@ -288,7 +330,9 @@ Item {
       initialWorkingDirectory: Quickshell.env("HOME") || "."
 
       onFinished: {
-        root.processExited(0)
+        if (!root._destroying) {
+          root.processExited(0)
+        }
       }
     }
 
@@ -378,11 +422,29 @@ Item {
       immediateQueryTimer.restart()
       if (root.activeTab) {
         root.refreshTerminal()
+        terminal.forceActiveFocus()
       }
     }
   }
 
   // MouseArea removed to prevent deselection on click
+  // (a MouseArea over the terminal steals presses from qmltermwidget; the
+  // margin strips above intentionally forward clicks, the terminal area does
+  // not need any QML-side click handling at all).
+
+  // QQC2 buttons in the tab bar (pin, +, settings, hide) take Qt active
+  // focus on click. The `focus: root.activeTab` binding cannot reclaim it
+  // (the bound value never changes), and qmltermwidget's TerminalDisplay
+  // never re-grabs focus on mouse press, so keystrokes stay stranded on the
+  // button. Re-assert focus whenever the active visible terminal loses it.
+  Connections {
+    target: terminal
+    function onTermLostFocus() {
+      if (root.activeTab && root.visible) {
+        Qt.callLater(function() { root.focusTerminal() })
+      }
+    }
+  }
 
   function refreshTerminal() {
     if (terminal) {
@@ -451,10 +513,15 @@ Item {
     }
   }
 
+  Component.onDestruction: {
+    root._destroying = true
+  }
+
   onActiveTabChanged: {
     if (activeTab) {
       refreshTerminal()
       refreshTimer.restart()
+      Qt.callLater(function() { root.focusTerminal() })
     }
   }
 
@@ -462,6 +529,7 @@ Item {
     if (visible && activeTab) {
       refreshTerminal()
       refreshTimer.restart()
+      Qt.callLater(function() { root.focusTerminal() })
     }
   }
 

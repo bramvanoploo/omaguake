@@ -62,7 +62,10 @@ fi
 # nested SSH TUIs (e.g. strata) are applied via wl-copy/xclip; qmltermwidget
 # and tmux both ignore OSC 52, so the relay is the plugin-side fix.
 if ! tmux -L "$SOCKET" has-session -t "$SESSION_NAME" 2>/dev/null; then
-  DEFAULT_SHELL="${SHELL:-/bin/bash}"
+  # The login shell from passwd is authoritative: quickshell's inherited
+  # $SHELL can be a stale session default (e.g. bash for a fish user).
+  LOGIN_SHELL="$(getent passwd "$(id -u)" | cut -d: -f7)"
+  DEFAULT_SHELL="${LOGIN_SHELL:-${SHELL:-/bin/bash}}"
   PANE_CMD=("$DEFAULT_SHELL")
   if [ -x "$SCRIPT_DIR/osc52-relay.py" ] && command -v python3 >/dev/null 2>&1; then
     export OMAGUAKE_CLIP_COPY="$CLIP_COPY"
@@ -93,25 +96,30 @@ tmux -L "$SOCKET" \
   set-option -t "$SESSION_NAME" mouse on \; \
   set-option -g detach-on-destroy on \; \
   set-option -s escape-time 0 \; \
+  set-option -g mode-style "bg=cyan,fg=black,bold" \; \
   set-option -s update-environ "DISPLAY WINDOWID SSH_TTY SSH_CLIENT SSH_ASKPASS HOST HOSTNAME PWD TERM TERM_PROGRAM TERM_PROGRAMS TERMINFO KRB5CCNAME OMAGUAKE_CLIP_COPY" \; \
   unbind-key -q -T root M-Escape \; \
   unbind-key -q -T root Escape \; \
   unbind-key -q -T copy-mode M-Escape \; \
   unbind-key -q -T copy-mode-vi M-Escape \; \
-  bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-no-clear "$CLIP_COPY" \; \
-  bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-no-clear "$CLIP_COPY" \; \
+  bind-key -T copy-mode Escape send-keys -X cancel \; \
+  bind-key -T copy-mode-vi Escape send-keys -X cancel \; \
+  bind-key -T copy-mode q send-keys -X cancel \; \
+  bind-key -T copy-mode-vi q send-keys -X cancel \; \
+  bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
+  bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
   bind-key -T copy-mode MouseDown1Pane "select-pane ; set -g @scroll_acc_up 0 ; set -g @scroll_acc_down 0 ; send-keys -X cancel" \; \
   bind-key -T copy-mode-vi MouseDown1Pane "select-pane ; set -g @scroll_acc_up 0 ; set -g @scroll_acc_down 0 ; send-keys -X cancel" \; \
-  bind-key -T copy-mode DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY" \; \
-  bind-key -T copy-mode-vi DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY" \; \
-  bind-key -T copy-mode TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY" \; \
-  bind-key -T copy-mode-vi TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY" \; \
+  bind-key -T copy-mode DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY" \; \
+  bind-key -T copy-mode-vi DoubleClick1Pane "select-pane ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY" \; \
+  bind-key -T copy-mode TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY" \; \
+  bind-key -T copy-mode-vi TripleClick1Pane "select-pane ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY" \; \
   bind-key -T copy-mode C-c send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
   bind-key -T copy-mode-vi C-c send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
   bind-key -T copy-mode Enter send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
   bind-key -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "$CLIP_COPY" \; \
-  bind-key -T root DoubleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe-no-clear $CLIP_COPY'" \; \
-  bind-key -T root TripleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe-no-clear $CLIP_COPY'" 2>/dev/null || true
+  bind-key -T root DoubleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-word ; send-keys -X copy-pipe-and-cancel $CLIP_COPY'" \; \
+  bind-key -T root TripleClick1Pane "select-pane -t = ; if-shell -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send-keys -M' 'copy-mode -H ; send-keys -X select-line ; send-keys -X copy-pipe-and-cancel $CLIP_COPY'" 2>/dev/null || true
 
 # Middle-click paste from system clipboard
 if [ -n "$CLIP_PASTE" ]; then
