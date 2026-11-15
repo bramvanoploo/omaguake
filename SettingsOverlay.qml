@@ -98,7 +98,10 @@ PopupCard {
 
   padding: Style.space(20)
   contentWidth: fittedContentWidth(Style.space(490))
-  contentHeight: fittedContentHeight(contentCol.implicitHeight)
+  // The options below the header scroll, so the card no longer grows with
+  // the number of settings: cap the height at 72% of the space the bar leaves.
+  readonly property real maxCardHeight: availableCardHeight > 0 ? Math.round(availableCardHeight * 0.72) : 0
+  contentHeight: fittedContentHeight(headerCol.implicitHeight + Style.space(10) + contentCol.implicitHeight, maxCardHeight)
 
   onOpenChanged: {
     if (open) {
@@ -295,19 +298,14 @@ PopupCard {
     }
   }
 
-  Flickable {
-    id: scrollArea
-    anchors.fill: parent
-    contentHeight: contentCol.implicitHeight
-    contentWidth: width
-    clip: true
-    boundsBehavior: Flickable.StopAtBounds
-    interactive: !(heightSlider.dragging || widthSlider.dragging || opacitySlider.dragging || scrollSpeedSlider.dragging)
-
-    Column {
-      id: contentCol
-      width: scrollArea.width
-      spacing: Style.space(10)
+  // The header stays pinned while the settings sections below it scroll
+  // (the card height is capped via contentHeight above).
+  Column {
+    id: headerCol
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    spacing: Style.space(10)
 
     // Header
     Row {
@@ -352,7 +350,7 @@ PopupCard {
             Text {
               id: versionText
               anchors.centerIn: parent
-              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.21")
+              text: "v" + (configManager && configManager.version ? configManager.version : "0.9.23")
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
@@ -375,6 +373,29 @@ PopupCard {
       height: 1
       color: Util.alpha(Color.foreground, 0.1)
     }
+  }
+
+  Flickable {
+    id: scrollArea
+    anchors.top: headerCol.bottom
+    anchors.topMargin: Style.space(10)
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    contentHeight: contentCol.implicitHeight
+    contentWidth: width
+    clip: true
+    boundsBehavior: Flickable.StopAtBounds
+    interactive: !(heightSlider.dragging || widthSlider.dragging || opacitySlider.dragging || scrollSpeedSlider.dragging)
+    ScrollBar.vertical: ScrollBar {
+      policy: ScrollBar.AsNeeded
+      width: 6
+    }
+
+    Column {
+      id: contentCol
+      width: scrollArea.width
+      spacing: Style.space(10)
 
     // 1. Interface Language Setting (All the way at the top)
     Column {
@@ -1026,6 +1047,39 @@ PopupCard {
           root.autoHideOnFocusLoss = !root.autoHideOnFocusLoss
           root.saveToConfig()
         }
+      }
+    }
+
+    Rectangle {
+      width: parent.width
+      height: 1
+      color: Util.alpha(Color.foreground, 0.08)
+    }
+
+    // 10. Panel Resizing (fixed shortcuts + drag hints; intentionally not
+    // adjustable - the shortcuts are hardcoded in TerminalView.qml)
+    Column {
+      width: parent.width
+      spacing: Style.space(1)
+
+      Text {
+        text: root.tr("resize_title")
+        font.family: Style.font.family
+        font.pixelSize: Style.font.body
+        font.bold: true
+        color: Color.foreground
+      }
+      Text {
+        text: root.tr("resize_desc_keys", { inc: "CTRL + SHIFT + +", dec: "CTRL + SHIFT + -" })
+        font.family: Style.font.family
+        font.pixelSize: Style.font.caption
+        color: Color.muted
+      }
+      Text {
+        text: root.tr("resize_desc_drag")
+        font.family: Style.font.family
+        font.pixelSize: Style.font.caption
+        color: Color.muted
       }
     }
   }

@@ -9,12 +9,25 @@ QtObject {
 
   property string pluginDir: ""
   readonly property string homeDir: Quickshell.env("HOME") || ""
-  property string version: "0.9.21"
-  readonly property string configPath: (homeDir ? homeDir : "~") + "/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
+  property string version: "0.9.23"
+  // Settings must live outside the plugin directory: Omarchy 4.5's shell
+  // watches everything under ~/.config/omarchy/plugins/ and reloads the
+  // plugin on any save there. Writing settings.json in-place on every panel
+  // height keypress therefore reloaded the whole plugin (and its terminals).
+  // Omarchy's own plugins persist state under ~/.local/state/omarchy, so do
+  // the same.
+  readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || ((homeDir ? homeDir : "~") + "/.local/state")) + "/omarchy/bramvanoploo.omaguake"
+  readonly property string configPath: stateDir + "/settings.json"
+  // Pre-4.5 location, inside the watched plugin directory. Only ever read, to
+  // migrate existing users' settings once; never written to again.
+  readonly property string legacyConfigPath: (homeDir ? homeDir : "~") + "/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
   readonly property string conflictCheckerScript: pluginDir + "/scripts/conflict-checker.py"
 
-  property int heightPercent: 50
-  property int widthPercent: 100
+  // Panel percents may be fractional: dragging the panel edge stores the
+  // exact edge position (keybinding steps and the settings slider stay on a
+  // 5-grid). Persisted with two decimals to keep settings.json readable.
+  property real heightPercent: 50
+  property real widthPercent: 100
   property int overlayOpacityPercent: 90
   property int scrollSpeed: 3
   property string tabsPosition: "bottom"
@@ -100,6 +113,14 @@ QtObject {
     return Math.max(lo, Math.min(hi, Math.round(n / 5) * 5))
   }
 
+  // Panel percents accept fractional values (edge dragging stores the exact
+  // position); round to two decimals so settings.json stays readable.
+  function clampPercent(val, lo, hi, fallback) {
+    var n = parseFloat(val)
+    if (isNaN(n)) n = fallback
+    return Math.max(lo, Math.min(hi, Math.round(n * 100) / 100))
+  }
+
   function loadSettings(raw) {
     if (!raw || !raw.trim()) {
       applyDefaults()
@@ -107,8 +128,8 @@ QtObject {
     }
     try {
       var data = JSON.parse(raw)
-      if (data.heightPercent !== undefined) heightPercent = clampInt(data.heightPercent, 20, 100, 50)
-      if (data.widthPercent !== undefined) widthPercent = clampInt(data.widthPercent, 20, 100, 100)
+      if (data.heightPercent !== undefined) heightPercent = clampPercent(data.heightPercent, 20, 100, 50)
+      if (data.widthPercent !== undefined) widthPercent = clampPercent(data.widthPercent, 20, 100, 100)
       if (data.overlayOpacityPercent !== undefined) overlayOpacityPercent = clampInt(data.overlayOpacityPercent, 20, 100, 90)
       scrollSpeed = (data.scrollSpeed !== undefined) ? clampStep(data.scrollSpeed, 1, 5, 3) : 3
       _settingsLoadedOnce = true
@@ -149,8 +170,8 @@ QtObject {
   }
 
   function saveSettings(obj) {
-    if (obj.heightPercent !== undefined) heightPercent = clampInt(obj.heightPercent, 20, 100, 50)
-    if (obj.widthPercent !== undefined) widthPercent = clampInt(obj.widthPercent, 20, 100, 100)
+    if (obj.heightPercent !== undefined) heightPercent = clampPercent(obj.heightPercent, 20, 100, 50)
+    if (obj.widthPercent !== undefined) widthPercent = clampPercent(obj.widthPercent, 20, 100, 100)
     if (obj.overlayOpacityPercent !== undefined) overlayOpacityPercent = clampInt(obj.overlayOpacityPercent, 20, 100, 90)
     if (obj.scrollSpeed !== undefined) {
       scrollSpeed = clampStep(obj.scrollSpeed, 1, 5, 3)
@@ -183,14 +204,64 @@ QtObject {
     settingsChanged()
   }
 
+  // One-time migration bookkeeping for the settings move out of the plugin
+  // directory (see configPath comment). Both FileViews load asynchronously,
+  // so the decision is made from whichever completes last.
+  // _legacyStatus: 0 = still loading, 1 = loaded, 2 = missing/unreadable.
+  property bool _stateConfigMissing: false
+  property bool _migrationHandled: false
+  property int _legacyStatus: 0
+
+  function _resolveMissingStateConfig() {
+    if (_migrationHandled || !_stateConfigMissing) return
+    if (_legacyStatus === 0) return // wait for the legacy FileView
+    _migrationHandled = true
+    if (_legacyStatus === 1) {
+      var raw = legacySettingsFile.text()
+      if (raw && raw.trim()) {
+        // Carry the user's persisted settings to the state directory.
+        // loadSettings() validates/clamps as usual; the raw copy preserves
+        // unknown keys if the file view ever gains any.
+        settingsFile.setText(raw)
+        loadSettings(raw)
+        return
+      }
+    }
+    applyDefaults()
+  }
+
   property var _settingsFile: FileView {
     id: settingsFile
     path: root.configPath
     watchChanges: true
     atomicWrites: true
     printErrors: false
-    onLoaded: root.loadSettings(text())
-    onLoadFailed: root.applyDefaults()
+    onLoaded: {
+      root._migrationHandled = true
+      root.loadSettings(text())
+    }
+    onLoadFailed: {
+      // Missing state settings: try the pre-4.5 copy once before defaults.
+      root._stateConfigMissing = true
+      root._resolveMissingStateConfig()
+    }
     onFileChanged: reload()
+  }
+
+  // Read-only: the plugin directory is watched for code changes, and reading
+  // never triggers a reload, only writing does.
+  property var _legacySettingsFile: FileView {
+    id: legacySettingsFile
+    path: root.legacyConfigPath
+    watchChanges: false
+    printErrors: false
+    onLoaded: {
+      root._legacyStatus = 1
+      root._resolveMissingStateConfig()
+    }
+    onLoadFailed: {
+      root._legacyStatus = 2
+      root._resolveMissingStateConfig()
+    }
   }
 }

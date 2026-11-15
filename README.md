@@ -81,9 +81,12 @@ omarchy plugin remove bramvanoploo.omaguake
 ## Configuration
 
 Right-click the OmaGuake bar icon (or click `⚙` in the terminal tab bar) to open the configuration overlay (all changes apply immediately in real time):
+
+Settings persist in `~/.local/state/omarchy/bramvanoploo.omaguake/settings.json` (outside the watched plugin directory, so saving settings never reloads the plugin). Settings from older versions are migrated automatically on first launch.
+
 - **Interface Language**: Follow system locale or choose from 15+ supported languages.
-- **Height**: Adjust dropdown panel height (20% – 100%, in 5% increments; can also be adjusted on the fly while the terminal is focused using **`CTRL + SHIFT + +`** to increase and **`CTRL + SHIFT + -`** to decrease).
-- **Width**: Adjust dropdown panel width (20% – 100%, default 100%, in 5% increments), centered horizontally.
+- **Height**: Adjust dropdown panel height (20% – 100%, in 5% increments; can also be adjusted on the fly while the terminal is focused using **`CTRL + SHIFT + +`** to increase and **`CTRL + SHIFT + -`** to decrease, or by dragging the panel's bottom edge).
+- **Width**: Adjust dropdown panel width (20% – 100%, default 100%, in 5% increments), centered horizontally (or by dragging either side edge of the terminal area).
 - **Opacity**: Adjust terminal background opacity (20% – 100%, in 5% increments) while keeping terminal text and the tab bar 100% opaque.
 - **Scroll Speed**: Adjust mouse wheel and trackpad scroll speed across 5 levels (from smooth/slow to tmux default).
 - **Tabs Position**: Choose between Bottom (Guake) or Top (Yakuake).

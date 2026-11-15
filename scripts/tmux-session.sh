@@ -130,7 +130,17 @@ if [ -n "$CLIP_PASTE" ]; then
 fi
 
 # Configure scroll speed (1=slowest/smooth trackpad, 5=tmux default)
-CONFIG_FILE="${HOME:-~}/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
+# Settings moved out of the plugin directory (Omarchy 4.5 reloads plugins on
+# any save under ~/.config/omarchy/plugins/); check the state dir first, then
+# the legacy plugin-dir copy, then the repo checkout next to this script.
+STATE_HOME="${XDG_STATE_HOME:-}"
+if [ -z "$STATE_HOME" ]; then
+  STATE_HOME="${HOME:-~}/.local/state"
+fi
+CONFIG_FILE="$STATE_HOME/omarchy/bramvanoploo.omaguake/settings.json"
+if [ ! -f "$CONFIG_FILE" ] && [ -f "${HOME:-~}/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json" ]; then
+  CONFIG_FILE="${HOME:-~}/.config/omarchy/plugins/bramvanoploo.omaguake/settings.json"
+fi
 if [ ! -f "$CONFIG_FILE" ] && [ -f "$(dirname "$SCRIPT_DIR")/settings.json" ]; then
   CONFIG_FILE="$(dirname "$SCRIPT_DIR")/settings.json"
 fi

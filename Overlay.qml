@@ -132,7 +132,10 @@ Item {
 
   FileView {
     id: clipboardBindsFile
-    path: root.pluginDir + "/clipboard_binds.json"
+    // Runtime state under ~/.local/state/omarchy/<plugin-id>/ — never inside
+    // the plugin directory itself (Omarchy reloads the plugin on any save
+    // there; see ConfigManager.qml).
+    path: config.stateDir + "/clipboard_binds.json"
     watchChanges: true
     printErrors: false
     onLoaded: {
@@ -525,7 +528,9 @@ Item {
   function adjustHeightPercent(delta) {
     if (!root.opened) return
     var current = config.heightPercent !== undefined ? config.heightPercent : 50
-    var next = Math.max(20, Math.min(100, Math.round((current + delta) / 5) * 5))
+    // Keep the 5% step but preserve fractional values left by edge dragging
+    // (rounding to the 5-grid here would visibly snap a finely dragged panel).
+    var next = Math.max(20, Math.min(100, Math.round((current + delta) * 10) / 10))
     if (next !== current) {
       config.saveSettings({ heightPercent: next })
       Qt.callLater(function() { root.refreshActiveTerminal() })
@@ -538,6 +543,194 @@ Item {
 
   function decreaseHeight() {
     adjustHeightPercent(-5)
+  }
+
+  // -------------------------------------------------------------------------
+  // Edge drag-to-resize. Grabbing the bottom edge adjusts height, grabbing a
+  // side edge adjusts width symmetrically (the panel stays centered). While
+  // dragging, the panel follows a fractional live percent through a frame-
+  // rate pump (no file writes, no config churn); the exact final value is
+  // persisted once on release - into the state dir, not the watched plugin
+  // dir, so resizing never reloads the plugin.
+  //
+  // The width grips sit exactly over TerminalView's decorative 20px side
+  // margin strips (never over terminal text) and span only the terminal area,
+  // so tab-bar buttons stay clickable. A plain click on a width grip (no
+  // movement) keeps the margin strips' behavior: leave tmux copy-mode.
+  // -------------------------------------------------------------------------
+  property bool resizingWidth: false
+  property bool resizingHeight: false
+  property bool _resizeMoved: false
+  property real _resizeStartX: 0
+  property real _resizeStartY: 0
+  // Pixel size frozen at press; the terminal grid keeps this and is only
+  // clipped by the animating card, so content never deforms mid-drag.
+  property real _dragStartW: 0
+  property real _dragStartH: 0
+  property real _dragTermW: 0
+  property real _dragTermH: 0
+  // Latest pointer-derived target size and the eased size actually shown.
+  // The eased values follow the target through NumberAnimation Behaviors,
+  // exactly how Hyprland eases a window while its border is dragged.
+  property real _dragTargetW: 0
+  property real _dragTargetH: 0
+
+  // Pointer position in window (surface-local) coordinates. The MouseEvent
+  // wrapper of this Qt build does not expose sceneX/sceneY (reading them
+  // yields undefined, which made every drag compute NaN and collapse the
+  // panel to its minimum), so map the item-relative x/y through the scene
+  // graph to the window root instead. During a drag the surface geometry is
+  // fixed, so these are stable absolute reference points even though the
+  // card is scaled under the cursor (the implicit pointer grab keeps motion
+  // events delivered while the button is held, even outside the grip).
+  function _dragPoint(item, mouse) {
+    try {
+      var p = item.mapToItem(null, mouse.x, mouse.y)
+      if (p && isFinite(p.x) && isFinite(p.y)) return p
+    } catch (e) {
+      console.warn("omaguake: drag pointer mapping failed")
+    }
+    return null
+  }
+
+  // Pointer events arrive at the mouse polling rate (125Hz+); handlers only
+  // record the latest target size and this single-shot pump applies it once
+  // per frame, where the Behaviors ease it smoothly.
+  Timer {
+    id: resizeApplyTimer
+    interval: 16
+    repeat: false
+    onTriggered: root._pumpResize()
+  }
+
+  function _pumpResize() {
+    if (resizingHeight) {
+      if (Math.abs(root._dragTargetH - panelWindow._dragVisualH) > 0.25) {
+        panelWindow._dragVisualH = root._dragTargetH
+        root._resizeMoved = true
+      }
+      resizeApplyTimer.restart()
+    }
+    if (resizingWidth) {
+      if (Math.abs(root._dragTargetW - panelWindow._dragVisualW) > 0.25) {
+        panelWindow._dragVisualW = root._dragTargetW
+        root._resizeMoved = true
+      }
+      resizeApplyTimer.restart()
+    }
+  }
+
+  function beginHeightDrag(item, mouse) {
+    var p = _dragPoint(item, mouse)
+    if (!p) return
+    _resizeMoved = false
+    _dragStartH = panelWindow.panelH
+    _dragStartW = panelWindow.panelW
+    _dragTermW = terminalArea.width
+    _dragTermH = terminalArea.height
+    _dragTargetH = _dragStartH
+    // Seed the eased sizes before entering drag mode: the Behaviors are
+    // disabled while not dragging, so they land instantly at the current
+    // true size instead of animating up from zero (which showed as a
+    // visible size glitch on press).
+    panelWindow._dragVisualW = _dragStartW
+    panelWindow._dragVisualH = _dragStartH
+    _resizeStartY = p.y
+    resizingHeight = true
+  }
+
+  function updateHeightDrag(item, mouse) {
+    if (!resizingHeight) return
+    var p = _dragPoint(item, mouse)
+    if (!p) return
+    var availH = panelWindow.availableH
+    if (availH <= 0) return
+    // The surface origin never moves for a height drag (top margin fixed),
+    // so the pointer delta maps 1:1 onto the card height.
+    var h = _dragStartH + (p.y - _resizeStartY)
+    h = Math.max(Math.round(0.2 * availH), Math.min(availH, h))
+    if (!isFinite(h)) return
+    _dragTargetH = h
+    if (!resizeApplyTimer.running) resizeApplyTimer.start()
+  }
+
+  function endHeightDrag() {
+    if (!resizingHeight) return
+    resizingHeight = false
+    var moved = _resizeMoved
+    // Commit the exact pointer target, not the mid-animation visual.
+    var finalSize = (_dragTargetH > 0 ? _dragTargetH : _dragStartH)
+    // Leaving drag mode (resizingHeight=false above) disables the Behaviors,
+    // so resetting the visual size is instant; the config commit below then
+    // resizes the window to the size the scaled card was already showing -
+    // the GPU scale and the real geometry agree, so nothing jumps.
+    panelWindow._dragVisualH = 0
+    _dragTargetH = 0
+    if (moved) {
+      var pct = finalSize / panelWindow.availableH * 100.0
+      pct = Math.max(20, Math.min(100, pct))
+      pct = Math.round(pct * 100) / 100
+      config.heightPercent = pct
+      config.saveSettings({ heightPercent: pct })
+      Qt.callLater(function() { root.refreshActiveTerminal() })
+    }
+  }
+
+  // side: -1 = left grip (drag left to widen), +1 = right grip.
+  // The panel stays centered, so both edges move: the width changes at
+  // twice the pointer delta (each scaled half-edge moves by half of it,
+  // which keeps the grabbed edge glued to the cursor).
+  function beginWidthDrag(item, side, mouse) {
+    var p = _dragPoint(item, mouse)
+    if (!p) return
+    _resizeMoved = false
+    _dragStartW = panelWindow.panelW
+    _dragStartH = panelWindow.panelH
+    _dragTermW = terminalArea.width
+    _dragTermH = terminalArea.height
+    _dragTargetW = _dragStartW
+    panelWindow._dragVisualW = _dragStartW
+    panelWindow._dragVisualH = _dragStartH
+    _resizeStartX = p.x
+    resizingWidth = true
+  }
+
+  function updateWidthDrag(item, side, mouse) {
+    if (!resizingWidth) return
+    var p = _dragPoint(item, mouse)
+    if (!p) return
+    var availW = panelWindow.availableW
+    if (availW <= 0) return
+    // The surface never moves while the panel is open, so the mapped
+    // pointer delta is already the true cursor movement.
+    var cursorDelta = p.x - _resizeStartX
+    var w = _dragStartW + side * 2.0 * cursorDelta
+    w = Math.max(Math.round(0.2 * availW), Math.min(availW, w))
+    if (!isFinite(w)) return
+    _dragTargetW = w
+    if (!resizeApplyTimer.running) resizeApplyTimer.start()
+  }
+
+  function endWidthDrag() {
+    if (!resizingWidth) return
+    resizingWidth = false
+    var moved = _resizeMoved
+    var finalSize = (_dragTargetW > 0 ? _dragTargetW : _dragStartW)
+    panelWindow._dragVisualW = 0
+    _dragTargetW = 0
+    if (moved) {
+      var pct = finalSize / panelWindow.availableW * 100.0
+      pct = Math.max(20, Math.min(100, pct))
+      pct = Math.round(pct * 100) / 100
+      config.widthPercent = pct
+      config.saveSettings({ widthPercent: pct })
+      Qt.callLater(function() { root.refreshActiveTerminal() })
+    } else {
+      // Click without drag on the side margin: behave like the margin strip
+      // click in TerminalView (drop tmux copy-mode so keystrokes aren't
+      // swallowed by a stuck copy-mode state).
+      root.cancelActiveTabCopyMode()
+    }
   }
 
   function selectTab(index) {
@@ -790,21 +983,27 @@ Item {
     }
   }
 
-  // Dedicated blur surface: maps only when settled, unmaps immediately on hide
+  // Dedicated blur surface: maps only when settled, unmaps immediately on hide.
+  // It is the only surface carrying blur (the Hyprland layer rule written by
+  // scripts/conflict-checker.py matches namespace "omaguake", and the panel
+  // surface's namespace deliberately does not match it - otherwise a resized
+  // blur surface would drag blur geometry along with configure churn).
   PanelWindow {
     id: blurWindow
     visible: root.blurActive && root.opened
     anchors { top: true; left: true; right: true }
     margins {
       top: root.topBarOffset
-      left: root.leftBarOffset + panelWindow.sideMarginLeft
-      right: root.rightBarOffset + panelWindow.sideMarginRight
+      left: root.leftBarOffset + Math.max(0, Math.round((panelWindow.availableW - panelWindow._cardW) / 2))
+      right: root.rightBarOffset + Math.max(0, Math.round((panelWindow.availableW - panelWindow._cardW) / 2))
     }
     color: "transparent"
     surfaceFormat.opaque: false
 
-    implicitHeight: panelWindow.panelH
-    implicitWidth: panelWindow.panelW
+    // Exact card extent (eased visual size during a drag): the blur region
+    // is this surface's extent, so it tracks the card frame by frame.
+    implicitHeight: Math.max(1, Math.round(panelWindow._cardH))
+    implicitWidth: Math.max(1, Math.round(panelWindow._cardW))
 
     WlrLayershell.namespace: "omaguake"
     WlrLayershell.layer: WlrLayer.Top
@@ -823,10 +1022,14 @@ Item {
     id: panelWindow
     visible: root.slideProgress > 0.001 || root.opened
     anchors { top: true; left: true; right: true }
+    // Fixed surface geometry while visible: never resized, so the
+    // compositor never re-configures (or stretches old buffers for) the
+    // surface during open, drag or release. The card itself is plain QML
+    // layout inside - resizing it costs nothing at the Wayland level.
     margins {
       top: root.topBarOffset
-      left: root.leftBarOffset + panelWindow.sideMarginLeft
-      right: root.rightBarOffset + panelWindow.sideMarginRight
+      left: root.leftBarOffset
+      right: root.rightBarOffset
     }
     color: "transparent"
     surfaceFormat.opaque: false
@@ -837,20 +1040,42 @@ Item {
     readonly property real availableH: Math.max(100, screenH - root.topBarOffset - root.bottomBarOffset)
     readonly property real panelH: Math.round(availableH * (Math.max(20, Math.min(100, config.heightPercent)) / 100.0))
     readonly property real panelW: Math.round(availableW * (Math.max(20, Math.min(100, config.widthPercent !== undefined ? config.widthPercent : 100)) / 100.0))
-    readonly property int sideMarginLeft: Math.max(0, Math.floor((availableW - panelW) / 2))
-    readonly property int sideMarginRight: Math.max(0, Math.round(availableW - panelW) - sideMarginLeft)
 
-    implicitHeight: panelH
-    implicitWidth: panelW
+    // Hyprland-style edge drag: while dragging, only QML items move - the
+    // card eases toward the pointer target through the Behaviors below
+    // (like Hyprland easing a window frame), while the surface stays put.
+    // _dragVisual* is the eased drag size; the card rect is _cardW/_cardH,
+    // which mask and blur follow each frame.
+    readonly property bool _dragMode: root.resizingWidth || root.resizingHeight
+    property real _dragVisualW: 0
+    property real _dragVisualH: 0
+    Behavior on _dragVisualW {
+      enabled: panelWindow._dragMode
+      NumberAnimation { duration: 90; easing.type: Easing.OutQuad }
+    }
+    Behavior on _dragVisualH {
+      enabled: panelWindow._dragMode
+      NumberAnimation { duration: 90; easing.type: Easing.OutQuad }
+    }
+    readonly property real _cardW: _dragMode && _dragVisualW > 0 ? Math.round(_dragVisualW) : panelW
+    readonly property real _cardH: _dragMode && _dragVisualH > 0 ? Math.round(_dragVisualH) : panelH
 
+    implicitHeight: availableH
+    implicitWidth: availableW
+
+    // Input region covers only the card, never the transparent area around
+    // it, so clicks beside the panel fall through to the desktop.
     mask: Region {
-      x: 0
+      x: Math.max(0, Math.round((panelWindow.availableW - panelWindow._cardW) / 2))
       y: 0
-      width: panelWindow.width
-      height: Math.max(0, Math.round(panelWindow.panelH * root.slideProgress))
+      width: Math.max(0, Math.round(panelWindow._cardW))
+      height: Math.max(0, Math.round(panelWindow._cardH * root.slideProgress))
     }
 
-    WlrLayershell.namespace: "omaguake-panel"
+    // Deliberately NOT matching the "omaguake" substring of the plugin's
+    // Hyprland blur layer rule (see blurWindow above): this surface is full
+    // working-area sized, so blurring it would blur the whole screen.
+    WlrLayershell.namespace: "guake-panel"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: (root.opened && !hideAnim.running)
       ? (root.focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
@@ -874,12 +1099,19 @@ Item {
       }
     }
 
-    // Sliding container item
+    // Sliding container item = the card. It carries the eased drag size
+    // while the surface stays fixed: the card, borders and tab bar
+    // relayout at true pixel sizes (nothing is squashed), and the terminal
+    // keeps its press-time cell grid - clipped, never deformed - reflowing
+    // once on release. Relayout inside a fixed surface is cheap: no
+    // configure, no buffer realloc.
     Item {
       id: container
-      width: parent.width
-      height: parent.height
-      y: Math.round((root.slideProgress - 1.0) * parent.height)
+      width: panelWindow._cardW
+      height: panelWindow._cardH
+      x: Math.round((parent.width - width) / 2)
+      y: Math.round((root.slideProgress - 1.0) * height)
+      clip: true
 
       readonly property real cardOpacity: {
         if (config && config.overlayOpacityPercent !== undefined) {
@@ -895,9 +1127,13 @@ Item {
       // Terminal Content Area (Background-only opacity shader keeps text 100% opaque)
       Item {
         id: terminalArea
-        width: parent.width
+        // During an edge drag the grid keeps its press-time size (centered
+        // in the animating card, clipped by the container when the card is
+        // smaller) so text never deforms or reflows mid-drag.
+        width: panelWindow._dragMode ? Math.round(root._dragTermW) : parent.width
+        height: panelWindow._dragMode ? Math.round(root._dragTermH) : parent.height - tabBar.height
+        x: panelWindow._dragMode ? Math.round((parent.width - width) / 2) : 0
         y: config.tabsPosition === "top" ? tabBar.height : 0
-        height: parent.height - tabBar.height
         clip: true
         layer.enabled: container.cardOpacity < 0.999
         layer.effect: ShaderEffect {
@@ -1115,6 +1351,86 @@ Item {
         border.width: 1
         radius: Style.cornerRadius
         enabled: false
+      }
+
+      // --- Drag-to-resize edge grips (see begin/update/endDrag functions) ---
+      // Accent edge appears on hover as the grab affordance.
+      MouseArea {
+        id: widthGripLeft
+        z: 20
+        hoverEnabled: true
+        x: 0
+        y: config.tabsPosition === "top" ? tabBar.height : 0
+        width: 20
+        height: Math.max(0, parent.height - tabBar.height)
+        cursorShape: Qt.SizeHorCursor
+        onPressed: function(mouse) { root.beginWidthDrag(widthGripLeft, -1, mouse) }
+        onPositionChanged: function(mouse) { root.updateWidthDrag(widthGripLeft, -1, mouse) }
+        onReleased: root.endWidthDrag()
+        onCanceled: root.endWidthDrag()
+
+        Rectangle {
+          anchors.left: parent.left
+          anchors.top: parent.top
+          anchors.bottom: parent.bottom
+          width: 2
+          color: Color.accent
+          opacity: 0.75
+          visible: widthGripLeft.containsMouse || widthGripLeft.pressed
+        }
+      }
+
+      MouseArea {
+        id: widthGripRight
+        z: 20
+        hoverEnabled: true
+        x: parent.width - 20
+        y: config.tabsPosition === "top" ? tabBar.height : 0
+        width: 20
+        height: Math.max(0, parent.height - tabBar.height)
+        cursorShape: Qt.SizeHorCursor
+        onPressed: function(mouse) { root.beginWidthDrag(widthGripRight, 1, mouse) }
+        onPositionChanged: function(mouse) { root.updateWidthDrag(widthGripRight, 1, mouse) }
+        onReleased: root.endWidthDrag()
+        onCanceled: root.endWidthDrag()
+
+        Rectangle {
+          anchors.right: parent.right
+          anchors.top: parent.top
+          anchors.bottom: parent.bottom
+          width: 2
+          color: Color.accent
+          opacity: 0.75
+          visible: widthGripRight.containsMouse || widthGripRight.pressed
+        }
+      }
+
+      // Bottom edge: 6px over the tab bar's vertical padding when the bar is
+      // at the bottom (default), over the terminal's last text line when the
+      // bar is at the top.
+      MouseArea {
+        id: heightGripBottom
+        z: 20
+        hoverEnabled: true
+        x: 0
+        y: parent.height - 6
+        width: parent.width
+        height: 6
+        cursorShape: Qt.SizeVerCursor
+        onPressed: function(mouse) { root.beginHeightDrag(heightGripBottom, mouse) }
+        onPositionChanged: function(mouse) { root.updateHeightDrag(heightGripBottom, mouse) }
+        onReleased: root.endHeightDrag()
+        onCanceled: root.endHeightDrag()
+
+        Rectangle {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.bottom: parent.bottom
+          height: 2
+          color: Color.accent
+          opacity: 0.75
+          visible: heightGripBottom.containsMouse || heightGripBottom.pressed
+        }
       }
     }
   }

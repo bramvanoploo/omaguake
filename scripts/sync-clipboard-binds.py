@@ -13,8 +13,19 @@ import select
 import socket
 import sys
 
-PROJECT_DIR = pathlib.Path(__file__).resolve().parent.parent
-OUTPUT_FILE = PROJECT_DIR / "clipboard_binds.json"
+# Runtime state lives outside the plugin directory: Omarchy 4.5 watches
+# everything under ~/.config/omarchy/plugins/ and reloads the plugin on any
+# save there, so writing clipboard_binds.json in-place reloaded the whole
+# plugin on every Hyprland config reload. Use Omarchy's own state convention
+# (~/.local/state/omarchy/<plugin-id>/), same location as settings.json.
+def get_state_dir():
+    state_home = os.environ.get("XDG_STATE_HOME") or ""
+    if not state_home:
+        state_home = str(pathlib.Path.home() / ".local" / "state")
+    return pathlib.Path(state_home) / "omarchy" / "bramvanoploo.omaguake"
+
+
+OUTPUT_FILE = get_state_dir() / "clipboard_binds.json"
 
 def get_hyprland_binds():
     sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
@@ -102,6 +113,7 @@ def update_file():
     try:
         if OUTPUT_FILE.exists() and OUTPUT_FILE.read_text(encoding="utf-8") == content:
             return data
+        OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
         temp_output = OUTPUT_FILE.with_suffix(f"{OUTPUT_FILE.suffix}.tmp.{os.getpid()}")
         temp_output.write_text(content, encoding="utf-8")
         temp_output.replace(OUTPUT_FILE)
