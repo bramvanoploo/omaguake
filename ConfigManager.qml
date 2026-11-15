@@ -9,7 +9,7 @@ QtObject {
 
   property string pluginDir: ""
   readonly property string homeDir: Quickshell.env("HOME") || ""
-  property string version: "0.9.23"
+  property string version: "0.9.3"
   // Settings must live outside the plugin directory: Omarchy 4.5's shell
   // watches everything under ~/.config/omarchy/plugins/ and reloads the
   // plugin on any save there. Writing settings.json in-place on every panel
