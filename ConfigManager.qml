@@ -31,6 +31,9 @@ QtObject {
   property int overlayOpacityPercent: 90
   property int scrollSpeed: 3
   property string tabsPosition: "bottom"
+  // Horizontal placement of the panel inside the work area. Only visible when
+  // widthPercent is below 100; "center" is the historical behavior.
+  property string panelAlignment: "center"
   property string language: ""
   property string keybinding: ""
   property bool gesturesEnabled: false
@@ -121,6 +124,13 @@ QtObject {
     return Math.max(lo, Math.min(hi, Math.round(n * 100) / 100))
   }
 
+  // Panel alignment is a closed set; anything unknown (or a hand-edited typo)
+  // falls back to the historical centered placement.
+  function normalizeAlignment(val) {
+    var s = String(val === undefined ? "" : val).toLowerCase().trim()
+    return (s === "left" || s === "right") ? s : "center"
+  }
+
   function loadSettings(raw) {
     if (!raw || !raw.trim()) {
       applyDefaults()
@@ -135,6 +145,7 @@ QtObject {
       _settingsLoadedOnce = true
       applyTmuxScrollSpeed(scrollSpeed)
       if (data.tabsPosition !== undefined) tabsPosition = data.tabsPosition === "top" ? "top" : "bottom"
+      if (data.panelAlignment !== undefined) panelAlignment = normalizeAlignment(data.panelAlignment)
       if (data.language !== undefined) {
         language = String(data.language)
         I18n.setLanguageOverride(language)
@@ -160,6 +171,7 @@ QtObject {
     _settingsLoadedOnce = true
     applyTmuxScrollSpeed(3)
     tabsPosition = "bottom"
+    panelAlignment = "center"
     language = ""
     I18n.setLanguageOverride("")
     keybinding = ""
@@ -178,6 +190,7 @@ QtObject {
       applyTmuxScrollSpeed(scrollSpeed)
     }
     if (obj.tabsPosition !== undefined) tabsPosition = obj.tabsPosition === "top" ? "top" : "bottom"
+    if (obj.panelAlignment !== undefined) panelAlignment = normalizeAlignment(obj.panelAlignment)
     if (obj.language !== undefined) {
       language = String(obj.language)
       I18n.setLanguageOverride(language)
@@ -193,6 +206,7 @@ QtObject {
       overlayOpacityPercent: overlayOpacityPercent,
       scrollSpeed: scrollSpeed,
       tabsPosition: tabsPosition,
+      panelAlignment: panelAlignment,
       language: language,
       keybinding: keybinding,
       gesturesEnabled: gesturesEnabled,

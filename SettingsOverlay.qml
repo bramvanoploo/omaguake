@@ -19,6 +19,7 @@ PopupCard {
   property int overlayOpacityPercent: 90
   property int scrollSpeed: 3
   property string tabsPosition: "bottom"
+  property string panelAlignment: "center"
   property string selectedLanguage: ""
 
   function scrollSpeedLabel(val) {
@@ -129,6 +130,7 @@ PopupCard {
       overlayOpacityPercent = snapPercent(configManager.overlayOpacityPercent, 90)
       scrollSpeed = Math.max(1, Math.min(5, configManager.scrollSpeed || 3))
       tabsPosition = configManager.tabsPosition || "bottom"
+      panelAlignment = configManager.panelAlignment || "center"
       selectedLanguage = configManager.language || ""
       I18n.setLanguageOverride(selectedLanguage)
       currentKeybinding = configManager.keybinding || ""
@@ -210,6 +212,7 @@ PopupCard {
         overlayOpacityPercent: overlayOpacityPercent,
         scrollSpeed: scrollSpeed,
         tabsPosition: tabsPosition,
+        panelAlignment: panelAlignment,
         language: selectedLanguage,
         keybinding: currentKeybinding,
         gesturesEnabled: gesturesEnabled,
@@ -838,7 +841,74 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 7. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
+    // 7. Panel Alignment (horizontal placement, matters below 100% width)
+    Column {
+      width: parent.width
+      spacing: Style.space(5)
+
+      Column {
+        spacing: Style.space(1)
+        Text {
+          text: root.tr("panel_alignment")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          font.bold: true
+          color: Color.foreground
+        }
+        Text {
+          text: root.tr("panel_alignment_desc")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.muted
+        }
+      }
+
+      Row {
+        width: parent.width
+        spacing: Style.spacing.sm
+        Button {
+          width: Math.floor((parent.width - 2 * Style.spacing.sm) / 3)
+          text: root.tr("align_left")
+          selected: root.panelAlignment === "left"
+          onClicked: {
+            if (root.panelAlignment !== "left") {
+              root.panelAlignment = "left"
+              root.saveToConfig()
+            }
+          }
+        }
+        Button {
+          width: Math.floor((parent.width - 2 * Style.spacing.sm) / 3)
+          text: root.tr("align_center")
+          selected: root.panelAlignment === "center"
+          onClicked: {
+            if (root.panelAlignment !== "center") {
+              root.panelAlignment = "center"
+              root.saveToConfig()
+            }
+          }
+        }
+        Button {
+          width: Math.floor((parent.width - 2 * Style.spacing.sm) / 3)
+          text: root.tr("align_right")
+          selected: root.panelAlignment === "right"
+          onClicked: {
+            if (root.panelAlignment !== "right") {
+              root.panelAlignment = "right"
+              root.saveToConfig()
+            }
+          }
+        }
+      }
+    }
+
+    Rectangle {
+      width: parent.width
+      height: 1
+      color: Util.alpha(Color.foreground, 0.08)
+    }
+
+    // 8. Global Shortcut Keybinding (Not applied by default, offers suggested & custom recording)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -922,7 +992,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 8. Trackpad Gestures (Not applied by default, offers suggested & custom)
+    // 9. Trackpad Gestures (Not applied by default, offers suggested & custom)
     Column {
       width: parent.width
       spacing: Style.space(5)
@@ -1010,7 +1080,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 9. Focus Behavior
+    // 10. Focus Behavior
     Item {
       width: parent.width
       height: Math.max(autoHideCol.implicitHeight, autoHideToggle.implicitHeight)
@@ -1056,7 +1126,7 @@ PopupCard {
       color: Util.alpha(Color.foreground, 0.08)
     }
 
-    // 10. Panel Resizing (fixed shortcuts + drag hints; intentionally not
+    // 11. Panel Resizing (fixed shortcuts + drag hints; intentionally not
     // adjustable - the shortcuts are hardcoded in TerminalView.qml)
     Column {
       width: parent.width

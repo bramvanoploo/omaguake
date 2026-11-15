@@ -27,6 +27,7 @@
       "overlayOpacityPercent": 90,
       "scrollSpeed": 3,
       "tabsPosition": "bottom",
+      "panelAlignment": "center",
       "language": "",
       "keybinding": "",
       "gesturesEnabled": false,
@@ -63,6 +64,12 @@
         "type": "string",
         "label": "Tabs position",
         "description": "Position of the tabs bar ('bottom' for Guake style, 'top' for Yakuake style)."
+      },
+      {
+        "key": "panelAlignment",
+        "type": "string",
+        "label": "Panel alignment",
+        "description": "Horizontal placement of the panel ('left', 'center' or 'right'); takes effect when widthPercent is below 100."
       },
       {
         "key": "language",

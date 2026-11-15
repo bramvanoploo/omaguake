@@ -34,6 +34,30 @@ Item {
   readonly property int leftBarOffset: (barPosition === "left") ? liveBarSize : 0
   readonly property int rightBarOffset: (barPosition === "right") ? liveBarSize : 0
 
+  // The configured alignment, resolved to one of the three known values so
+  // every consumer (placement, grip liveness, drag math) reads one value.
+  readonly property string effectiveAlignment:
+    (config && (config.panelAlignment === "left" || config.panelAlignment === "right"))
+      ? config.panelAlignment : "center"
+
+  // Horizontal placement of a box of `itemW` inside a `totalW` work area, for
+  // the configured panel alignment. Callers pass the bar-aware work area
+  // width (availableW already subtracts the left/right bar offsets), so the
+  // panel stays inside the work area for any omarchy bar position.
+  // `allowOverflow` is for content placement: the terminal grid keeps its
+  // press-time size during a shrink drag, so it is deliberately wider than the
+  // card and must hang over the free side(s) (negative x, clipped by the
+  // container) instead of snapping to the leading edge.
+  function alignX(totalW, itemW, allowOverflow) {
+    var a = root.effectiveAlignment
+    var x
+    if (a === "left") return 0
+    if (a === "right") x = totalW - itemW
+    else x = (totalW - itemW) / 2
+    x = Math.round(x)
+    return allowOverflow ? x : Math.max(0, x)
+  }
+
   property bool opened: false
   property real slideProgress: 0.0
   property bool blurActive: false
@@ -547,7 +571,8 @@ Item {
 
   // -------------------------------------------------------------------------
   // Edge drag-to-resize. Grabbing the bottom edge adjusts height, grabbing a
-  // side edge adjusts width symmetrically (the panel stays centered). While
+  // side edge adjusts width: symmetrically while the panel is centered, or
+  // from the free edge only when it is aligned left/right in the work area. While
   // dragging, the panel follows a fractional live percent through a frame-
   // rate pump (no file writes, no config churn); the exact final value is
   // persisted once on release - into the state dir, not the watched plugin
@@ -677,10 +702,25 @@ Item {
   }
 
   // side: -1 = left grip (drag left to widen), +1 = right grip.
-  // The panel stays centered, so both edges move: the width changes at
-  // twice the pointer delta (each scaled half-edge moves by half of it,
-  // which keeps the grabbed edge glued to the cursor).
+  // A centered panel grows from both edges, so both grips are live and the
+  // width changes at twice the pointer delta (each half-edge moves by half of
+  // it, which keeps the grabbed edge glued to the cursor). When the panel is
+  // aligned left or right, the edge on that side is pinned to the work-area
+  // edge: that grip stops resizing and only the free edge drags, 1:1.
+  function isWidthGripLive(side) {
+    var a = root.effectiveAlignment
+    if (a === "left") return side === 1
+    if (a === "right") return side === -1
+    return true
+  }
+
   function beginWidthDrag(item, side, mouse) {
+    if (!isWidthGripLive(side)) {
+      // Pinned edge: no resize, but keep the margin strip behavior of a plain
+      // click (drop tmux copy-mode), same as endWidthDrag's no-move case.
+      root.cancelActiveTabCopyMode()
+      return
+    }
     var p = _dragPoint(item, mouse)
     if (!p) return
     _resizeMoved = false
@@ -704,7 +744,14 @@ Item {
     // The surface never moves while the panel is open, so the mapped
     // pointer delta is already the true cursor movement.
     var cursorDelta = p.x - _resizeStartX
-    var w = _dragStartW + side * 2.0 * cursorDelta
+    // Pointer-delta multiplier, read per event rather than snapshotted at
+    // press: a centered card grows from both edges (2x, the grabbed edge stays
+    // glued to the cursor), a left-/right-aligned card has one edge pinned to
+    // the work-area edge, so its free edge follows the pointer 1:1. Reading it
+    // live keeps the grab math in step with the placement, which also follows
+    // the setting when it changes mid-drag (external settings.json edit).
+    var factor = (root.effectiveAlignment === "center") ? 2.0 : 1.0
+    var w = _dragStartW + side * factor * cursorDelta
     w = Math.max(Math.round(0.2 * availW), Math.min(availW, w))
     if (!isFinite(w)) return
     _dragTargetW = w
@@ -994,8 +1041,10 @@ Item {
     anchors { top: true; left: true; right: true }
     margins {
       top: root.topBarOffset
-      left: root.leftBarOffset + Math.max(0, Math.round((panelWindow.availableW - panelWindow._cardW) / 2))
-      right: root.rightBarOffset + Math.max(0, Math.round((panelWindow.availableW - panelWindow._cardW) / 2))
+      // Tracks the card's horizontal placement (panel alignment aware) so the
+      // blur region sits exactly under the card, not under a centered rect.
+      left: root.leftBarOffset + panelWindow._cardX
+      right: root.rightBarOffset + Math.max(0, Math.round(panelWindow.availableW - panelWindow._cardW - panelWindow._cardX))
     }
     color: "transparent"
     surfaceFormat.opaque: false
@@ -1059,6 +1108,9 @@ Item {
     }
     readonly property real _cardW: _dragMode && _dragVisualW > 0 ? Math.round(_dragVisualW) : panelW
     readonly property real _cardH: _dragMode && _dragVisualH > 0 ? Math.round(_dragVisualH) : panelH
+    // Card placement inside the (bar-aware) work area for the current panel
+    // alignment; the mask, the card item and the blur surface all follow it.
+    readonly property real _cardX: root.alignX(availableW, _cardW)
 
     implicitHeight: availableH
     implicitWidth: availableW
@@ -1066,7 +1118,7 @@ Item {
     // Input region covers only the card, never the transparent area around
     // it, so clicks beside the panel fall through to the desktop.
     mask: Region {
-      x: Math.max(0, Math.round((panelWindow.availableW - panelWindow._cardW) / 2))
+      x: panelWindow._cardX
       y: 0
       width: Math.max(0, Math.round(panelWindow._cardW))
       height: Math.max(0, Math.round(panelWindow._cardH * root.slideProgress))
@@ -1109,7 +1161,7 @@ Item {
       id: container
       width: panelWindow._cardW
       height: panelWindow._cardH
-      x: Math.round((parent.width - width) / 2)
+      x: panelWindow._cardX
       y: Math.round((root.slideProgress - 1.0) * height)
       clip: true
 
@@ -1127,12 +1179,15 @@ Item {
       // Terminal Content Area (Background-only opacity shader keeps text 100% opaque)
       Item {
         id: terminalArea
-        // During an edge drag the grid keeps its press-time size (centered
-        // in the animating card, clipped by the container when the card is
-        // smaller) so text never deforms or reflows mid-drag.
+        // During an edge drag the grid keeps its press-time size (placed in
+        // the animating card by the panel alignment, clipped by the container
+        // when the card is smaller) so text never deforms or reflows mid-drag.
+        // Overflow is allowed: when shrinking, the grid is wider than the card
+        // and hangs over the free side(s), exactly as a centered panel did
+        // before alignment existed (and a right-aligned one hangs left).
         width: panelWindow._dragMode ? Math.round(root._dragTermW) : parent.width
         height: panelWindow._dragMode ? Math.round(root._dragTermH) : parent.height - tabBar.height
-        x: panelWindow._dragMode ? Math.round((parent.width - width) / 2) : 0
+        x: panelWindow._dragMode ? root.alignX(parent.width, width, true) : 0
         y: config.tabsPosition === "top" ? tabBar.height : 0
         clip: true
         layer.enabled: container.cardOpacity < 0.999
@@ -1354,7 +1409,10 @@ Item {
       }
 
       // --- Drag-to-resize edge grips (see begin/update/endDrag functions) ---
-      // Accent edge appears on hover as the grab affordance.
+      // Accent edge appears on hover as the grab affordance. When the panel is
+      // aligned left or right, the edge pinned to the work-area boundary is
+      // not a resize target, so its grip drops the accent and resize cursor
+      // (it keeps the plain click behavior of the margin strip).
       MouseArea {
         id: widthGripLeft
         z: 20
@@ -1363,7 +1421,7 @@ Item {
         y: config.tabsPosition === "top" ? tabBar.height : 0
         width: 20
         height: Math.max(0, parent.height - tabBar.height)
-        cursorShape: Qt.SizeHorCursor
+        cursorShape: root.isWidthGripLive(-1) ? Qt.SizeHorCursor : Qt.ArrowCursor
         onPressed: function(mouse) { root.beginWidthDrag(widthGripLeft, -1, mouse) }
         onPositionChanged: function(mouse) { root.updateWidthDrag(widthGripLeft, -1, mouse) }
         onReleased: root.endWidthDrag()
@@ -1376,7 +1434,7 @@ Item {
           width: 2
           color: Color.accent
           opacity: 0.75
-          visible: widthGripLeft.containsMouse || widthGripLeft.pressed
+          visible: root.isWidthGripLive(-1) && (widthGripLeft.containsMouse || widthGripLeft.pressed)
         }
       }
 
@@ -1388,7 +1446,7 @@ Item {
         y: config.tabsPosition === "top" ? tabBar.height : 0
         width: 20
         height: Math.max(0, parent.height - tabBar.height)
-        cursorShape: Qt.SizeHorCursor
+        cursorShape: root.isWidthGripLive(1) ? Qt.SizeHorCursor : Qt.ArrowCursor
         onPressed: function(mouse) { root.beginWidthDrag(widthGripRight, 1, mouse) }
         onPositionChanged: function(mouse) { root.updateWidthDrag(widthGripRight, 1, mouse) }
         onReleased: root.endWidthDrag()
@@ -1401,7 +1459,7 @@ Item {
           width: 2
           color: Color.accent
           opacity: 0.75
-          visible: widthGripRight.containsMouse || widthGripRight.pressed
+          visible: root.isWidthGripLive(1) && (widthGripRight.containsMouse || widthGripRight.pressed)
         }
       }
 

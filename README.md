@@ -33,6 +33,7 @@ An [Omarchy](https://omarchy.org) status bar plugin and drop-down terminal mimic
   - Pinned **`+`** button on the far right of the tab bar to quickly open new tabs.
   - Tab close button (`×`) to terminate and close individual sessions cleanly.
   - Configurable tab bar position: **Bottom** (Guake style, default) or **Top** (Yakuake style).
+  - Configurable panel alignment: **Left**, **Center** (default) or **Right** within the work area - relevant when the width is set below 100%, and always kept clear of the Omarchy bar wherever it is docked.
   - Built-in keyboard shortcuts for tab management (`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab`, `Ctrl+Shift+Tab`, `Ctrl+1..9`), panel height adjustment (`CTRL + SHIFT + +` / `CTRL + SHIFT + -` in 5% increments), and universal copy/paste (`Super+C`/`Super+V`, `Ctrl+Shift+C`/`Ctrl+Shift+V`, and active Hyprland universal clipboard bindings).
   - **OSC 52 clipboard passthrough**: TUIs inside nested SSH sessions (e.g. `strata launch`) can copy to the local system clipboard via OSC 52 escape sequences; a lightweight relay (`scripts/osc52-relay.py`) applies them with `wl-copy`/`xclip`, since `qmltermwidget` and tmux both ignore OSC 52. Tab title indicators (command/directory) keep reporting the real foreground process through the relay. Clipboard-read queries are rejected by default for security to prevent remote terminal output from reading local clipboard contents without an explicit user paste action.
 
@@ -86,10 +87,11 @@ Settings persist in `~/.local/state/omarchy/bramvanoploo.omaguake/settings.json`
 
 - **Interface Language**: Follow system locale or choose from 15+ supported languages.
 - **Height**: Adjust dropdown panel height (20% – 100%, in 5% increments; can also be adjusted on the fly while the terminal is focused using **`CTRL + SHIFT + +`** to increase and **`CTRL + SHIFT + -`** to decrease, or by dragging the panel's bottom edge).
-- **Width**: Adjust dropdown panel width (20% – 100%, default 100%, in 5% increments), centered horizontally (or by dragging either side edge of the terminal area).
+- **Width**: Adjust dropdown panel width (20% – 100%, default 100%, in 5% increments), placed by the panel alignment below (or by dragging a free side edge of the terminal area; a centered panel resizes from both edges).
 - **Opacity**: Adjust terminal background opacity (20% – 100%, in 5% increments) while keeping terminal text and the tab bar 100% opaque.
 - **Scroll Speed**: Adjust mouse wheel and trackpad scroll speed across 5 levels (from smooth/slow to tmux default).
 - **Tabs Position**: Choose between Bottom (Guake) or Top (Yakuake).
+- **Panel Alignment**: Place the panel on the **Left**, **Center** (default) or **Right** of the work area. Takes effect when the width is below 100%, and the placement always stays clear of the Omarchy bar whether it is docked top, bottom, left or right.
 - **Keybinding**: Apply the suggested shortcut (`CTRL + SPACE`) or record any custom key chord with automatic conflict resolution.
 - **Trackpad Gestures**: Configure 3-finger or 4-finger vertical swipe gestures with conflict checking.
 - **Auto-hide**: Toggle auto-hide on focus loss.
