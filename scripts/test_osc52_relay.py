@@ -23,7 +23,7 @@ spec.loader.exec_module(relay)
 class TestOsc52RelaySecurity(unittest.TestCase):
     def test_filter_osc52_set(self):
         buf = b"hello\x1b]52;c;dGVzdA==\x07world"
-        out, rem, events = relay.filter_osc52(buf)
+        out, rem, events = relay.Osc52Filter.scan(buf)
         self.assertEqual(out, b"helloworld")
         self.assertEqual(rem, b"")
         self.assertEqual(len(events), 1)
@@ -31,7 +31,7 @@ class TestOsc52RelaySecurity(unittest.TestCase):
 
     def test_filter_osc52_set_st_terminated(self):
         buf = b"abc\x1b]52;c;dGVzdA==\x1b\\def"
-        out, rem, events = relay.filter_osc52(buf)
+        out, rem, events = relay.Osc52Filter.scan(buf)
         self.assertEqual(out, b"abcdef")
         self.assertEqual(rem, b"")
         self.assertEqual(len(events), 1)
@@ -39,11 +39,54 @@ class TestOsc52RelaySecurity(unittest.TestCase):
 
     def test_filter_osc52_query(self):
         buf = b"foo\x1b]52;c;?\x07bar"
-        out, rem, events = relay.filter_osc52(buf)
+        out, rem, events = relay.Osc52Filter.scan(buf)
         self.assertEqual(out, b"foobar")
         self.assertEqual(rem, b"")
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0], (b"c", None))
+
+    def test_filter_incremental_matches_oneshot(self):
+        # Feeding the same bytes in small chunks must yield the same
+        # output and events as the one-shot scan, in order.
+        whole = b"a\x1b]52;c;dGVzdA==\x07b\x1b]52;c;?\x07c\x1b]52"
+        ref_out, ref_rem, ref_events = relay.Osc52Filter.scan(whole)
+        f = relay.Osc52Filter()
+        outs, events = [], []
+        for off in range(0, len(whole), 3):
+            o, ev = f.feed(whole[off:off + 3])
+            outs.append(o)
+            events.extend(ev)
+        rem = f.flush()
+        self.assertEqual(b"".join(outs) + rem, ref_out + ref_rem)
+        self.assertEqual(events, ref_events)
+
+    def test_filter_incremental_st_split(self):
+        # A sequence whose ST (ESC \) straddles a read boundary.
+        f = relay.Osc52Filter()
+        o1, e1 = f.feed(b"x\x1b]52;c;dGVzdA==\x1b")
+        o2, e2 = f.feed(b"\\y")
+        self.assertEqual(o1 + o2, b"xy")
+        self.assertEqual(e1 + e2, [(b"c", b"dGVzdA==")])
+        self.assertEqual(f.flush(), b"")
+
+    def test_filter_unterminated_osc52_stream_is_bounded(self):
+        # Reviewer-flagged DoS shape: an unterminated OSC 52 payload
+        # streamed into the relay must not grow the held buffer past the
+        # payload cap plus one read, must produce no events, and must
+        # keep releasing bytes so the tab's output is not stalled.
+        f = relay.Osc52Filter()
+        seq = b"\x1b]52;c;" + b"A" * (3 * relay.MAX_PAYLOAD)
+        total = bytearray()
+        for off in range(0, len(seq), 65536):
+            out, events = f.feed(seq[off:off + 65536])
+            self.assertEqual(events, [])
+            self.assertLessEqual(
+                len(f.held), relay.MAX_PAYLOAD + 65536 + 70,
+                "held buffer must stay bounded while streaming",
+            )
+            total += out
+        total += f.flush()
+        self.assertEqual(bytes(total), seq)  # released verbatim, nothing lost
 
     def test_clip_cmds_rejects_paste_by_default(self):
         with patch.dict(os.environ, {"OMAGUAKE_CLIP_PASTE": "wl-paste -n"}):

@@ -10,6 +10,7 @@ import fcntl
 import json
 import os
 import pty
+import re
 import selectors
 import shlex
 import shutil
@@ -22,9 +23,10 @@ import tty
 import termios
 
 CLI = b"\x1b]52;"  # OSC 52 introducer
-B64CHARS = frozenset(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=?"
-)
+# First byte outside the OSC 52 payload alphabet (which includes the BEL/ESC
+# of a terminator): the payload scan resumes there. One regex pass replaces
+# the per-byte loop so a streamed payload costs O(new bytes), not O(held).
+PAYLOAD_STOP = re.compile(rb"[^A-Za-z0-9+/=?]")
 MAX_PAYLOAD = 1 << 20  # 1 MiB sanity cap per sequence (write)
 MAX_READ_BYTES = 64 * 1024  # 64 KiB cap per clipboard-read query response (output limit)
 READ_TIMEOUT = 1.0  # 1.0s timeout for paste command execution (time limit)
@@ -111,73 +113,135 @@ def write_state(path, info):
         pass
 
 
-def filter_osc52(buf):
-    """Scan buf for complete OSC 52 sequences.
-    Returns (bytes_safe_to_emit, remaining_buffer, events).
-    events: (params, payload) for set, (params, None) for clipboard query."""
-    out = bytearray()
-    events = []
-    i = 0
-    while True:
-        idx = buf.find(CLI, i)
-        if idx < 0:
-            keep = 0
-            for k in range(len(CLI) - 1, 0, -1):
-                if buf.endswith(CLI[:k]):
-                    keep = k
-                    break
-            out += buf[i:len(buf) - keep]
-            return bytes(out), buf[len(buf) - keep:], events
-        out += buf[i:idx]
-        # Parameters: printable (no ';' no ESC), terminated by ';'.
-        j = k = idx + len(CLI)
-        while k < len(buf) and 0x20 <= buf[k] < 0x7F and buf[k] != 0x3B:
-            k += 1
-        if k >= len(buf) and len(buf) - j < 64:
-            return bytes(out), buf[idx:], events  # params incomplete
-        if k >= len(buf) or buf[k] != 0x3B:
-            out += buf[idx:k]
-            i = k
-            continue  # not a real OSC 52: emit verbatim
-        params = buf[j:k]
-        p = e = k + 1
-        term = 0
-        malformed = False
-        while e < len(buf):
-            c = buf[e]
-            if c == 0x07:
-                term = 1
-                break
-            if c == 0x1B:
-                if e + 1 >= len(buf):
-                    return bytes(out), buf[idx:], events  # ST incomplete
-                if buf[e + 1] == 0x5C:
-                    term = 2
-                    break
-                out += buf[idx:e]
-                i = e
-                malformed = True
-                break
-            if chr(c) not in B64CHARS:
-                out += buf[idx:e]
-                i = e
-                malformed = True
-                break
-            e += 1
-        if malformed:
-            continue
-        if term == 0:
-            if e - p > MAX_PAYLOAD:
-                out += buf[idx:e]
-                i = e
+class Osc52Filter:
+    """Incremental OSC 52 scanner: watches a byte stream for complete
+    OSC 52 sequences, releases everything outside them verbatim, and
+    yields events for the sequences it strips.
+
+    feed(data) returns (bytes_safe_to_emit, events); events are
+    (params, payload) for a set, (params, None) for a clipboard query.
+    Only the head of one in-progress sequence is ever held (params <=
+    64 bytes per xterm's parameter limit, payload <= MAX_PAYLOAD) and
+    the next feed() resumes the scan inside the held head, so each byte
+    of pane output is scanned once: a peer streaming an unterminated
+    OSC 52 sequence cannot grow a rescan buffer or stall the stream
+    past the payload cap, at which point the sequence is released
+    verbatim and scanning restarts.
+
+    scan(buf) is the one-shot form: (out, remaining_buffer, events).
+    """
+
+    HEAD = 0  # holding a partial "\x1b]52;" introducer (<= len(CLI) - 1)
+    PARAMS = 1  # introducer matched; holding the sequence head
+
+    def __init__(self):
+        self.held = bytearray()
+        self.state = self.HEAD
+        self.rpos = None  # validated payload scan position within held
+
+    def feed(self, data):
+        out = bytearray()
+        events = []
+        buf = self.held
+        buf.extend(data)
+        # A held head is bounded (partial introducer, <= 64 parameter
+        # bytes per xterm's limit, or a payload capped at MAX_PAYLOAD),
+        # and its payload scan resumes at rpos: validated bytes are
+        # never rescanned, so each byte costs one regex hop over new
+        # data, not a pass over the held head.
+        resume = self.rpos
+        self.rpos = None
+        resumed = self.state == self.PARAMS and resume is not None
+        i = 0
+        while True:
+            idx = buf.find(CLI, i)
+            if idx < 0:
+                keep = 0
+                for k in range(len(CLI) - 1, 0, -1):
+                    if buf.endswith(CLI[:k]):
+                        keep = k
+                        break
+                out += buf[i:len(buf) - keep]
+                self.held = buf[len(buf) - keep:] if keep else bytearray()
+                self.state = self.HEAD
+                return bytes(out), events
+            out += buf[i:idx]
+            # Parameters: printable (no ';' no ESC), terminated by ';'.
+            j = k = idx + len(CLI)
+            while k < len(buf) and 0x20 <= buf[k] < 0x7F and buf[k] != 0x3B:
+                k += 1
+            if k >= len(buf) and len(buf) - j < 64:
+                self.held = buf[idx:]  # params incomplete
+                self.state = self.PARAMS
+                return bytes(out), events
+            if k >= len(buf) or buf[k] != 0x3B:
+                out += buf[idx:k]
+                i = k
+                continue  # not a real OSC 52: emit verbatim
+            params = buf[j:k]
+            p = k + 1
+            e = p
+            if resumed and idx == 0:
+                e = max(p, resume)
+                resumed = False
+            term = 0
+            malformed = False
+            m = PAYLOAD_STOP.search(buf, e)
+            if m is None:
+                e = len(buf)
+            else:
+                e = m.start()
+                c = buf[e]
+                if c == 0x07:
+                    term = 1
+                elif c == 0x1B:
+                    if e + 1 >= len(buf):
+                        self.held = buf[idx:]  # ST incomplete
+                        self.state = self.PARAMS
+                        self.rpos = e - idx  # reprocess this ESC next feed
+                        return bytes(out), events
+                    if buf[e + 1] == 0x5C:
+                        term = 2
+                    else:
+                        out += buf[idx:e]
+                        i = e
+                        malformed = True
+                else:
+                    out += buf[idx:e]
+                    i = e
+                    malformed = True
+            if malformed:
                 continue
-            return bytes(out), buf[idx:], events  # payload incomplete
-        payload = buf[p:e]
-        if payload != b"?":
-            events.append((params, payload))
-        else:
-            events.append((params, None))
-        i = e + term
+            if term == 0:
+                if e - p > MAX_PAYLOAD:
+                    out += buf[idx:e]
+                    i = e
+                    continue
+                self.held = buf[idx:]  # payload incomplete
+                self.state = self.PARAMS
+                self.rpos = e - idx
+                return bytes(out), events
+            payload = buf[p:e]
+            if payload != b"?":
+                events.append((params, payload))
+            else:
+                events.append((params, None))
+            i = e + term
+
+    def flush(self):
+        """End of stream: release any held sequence head verbatim."""
+        held, self.held = self.held, bytearray()
+        self.state = self.HEAD
+        self.rpos = None
+        return bytes(held)
+
+    @staticmethod
+    def scan(buf):
+        """One-shot scan for one-off callers/tests:
+        (bytes_safe_to_emit, remaining_buffer, events)."""
+        f = Osc52Filter()
+        out, events = f.feed(buf)
+        return out, f.flush(), events
 
 
 class AltScreenGuard:
@@ -212,14 +276,29 @@ class AltScreenGuard:
 
     Only pane process output passes through here (the relay is the pane's
     command wrapper), so the tracking matches what tmux will interpret.
+
+    Memory/CPU bound: a partial sequence held across read() calls is
+    capped (CSI_LIMIT for CSI parameters, STRING_LIMIT for string
+    bodies). Past the cap the rest of the sequence streams through
+    verbatim while its terminator is still tracked (in_csi/in_str), so
+    body bytes stay inert and no growing buffer is ever prepended and
+    rescanned: an unterminated CSI/OSC/DCS stream costs one pass per
+    byte and bounded memory, not quadratic CPU and unbounded memory.
+    A sequence large enough to stream can never be an alt-screen one
+    we act on (those carry a parameter block of at most 64 bytes), so
+    the decision quality is unchanged.
     """
 
     ENTER_MODES = (47, 1047, 1049)
+    CSI_LIMIT = 1024  # real parameter blocks for our check are <= 64 bytes
+    STRING_LIMIT = 64 * 1024  # a body past this streams instead of holding
 
     def __init__(self):
         self.stack = []  # alt modes entered and not yet left (cap ~16)
         self.saved_pending = False  # last DECSC (ESC 7) not yet consumed by DECRC
         self.pending = b""  # head of a sequence split across read() calls
+        self.in_csi = False  # streaming past CSI_LIMIT: body released, end tracked
+        self.in_str = False  # streaming past STRING_LIMIT: same for string bodies
 
     @staticmethod
     def _private_modes(params):
@@ -231,11 +310,50 @@ class AltScreenGuard:
                 modes.append(int(part))
         return modes
 
+    def _stream(self, data, out):
+        """While streaming an over-limit sequence, release its body bytes
+        verbatim while tracking the end; return the remainder to parse."""
+        n = len(data)
+        k = 0
+        while k < n:
+            c = data[k]
+            if self.in_csi:
+                if 0x20 <= c <= 0x3F:  # parameter/intermediate byte
+                    k += 1
+                    continue
+                out += data[:k + 1]  # final byte (or stray ESC) ends the CSI
+                self.in_csi = False
+                return data[k + 1:]
+            # in_str: ended by BEL or ST (ESC \); a lone ESC is body bytes.
+            if c == 0x07:
+                out += data[:k + 1]
+                self.in_str = False
+                return data[k + 1:]
+            if c == 0x1B:
+                if k + 1 >= n:
+                    out += data[:k]  # ESC may begin an ST: hold just it
+                    self.pending = b"\x1b"
+                    return b""
+                if data[k + 1] == 0x5C:
+                    out += data[:k + 2]
+                    self.in_str = False
+                    return data[k + 2:]
+            k += 1
+        out += data
+        return b""
+
     def feed(self, data, flush=False):
         """Return bytes safe to emit now; hold any partial sequence."""
         data = self.pending + data
         self.pending = b""
         out = bytearray()
+        if self.in_csi or self.in_str:
+            data = self._stream(data, out)
+            if not data:
+                if flush:
+                    out += self.pending  # e.g. a trailing ESC of a split ST
+                    self.pending = b""
+                return bytes(out)
         i, n = 0, len(data)
         while i < n:
             idx = data.find(b"\x1b", i)
@@ -258,6 +376,14 @@ class AltScreenGuard:
                 if k >= n:
                     if flush:
                         out += data[i:]
+                        break
+                    if len(data) - i > self.CSI_LIMIT:
+                        # Over-limit unterminated CSI: release the head
+                        # verbatim and stream the body with its end still
+                        # tracked (a parameter block this big can never
+                        # be an alt-screen sequence we would act on).
+                        out += data[i:]
+                        self.in_csi = True
                         break
                     self.pending = data[i:]
                     break
@@ -298,6 +424,13 @@ class AltScreenGuard:
                 if end < 0:
                     if flush:
                         out += data[i:]
+                        break
+                    if len(data) - i > self.STRING_LIMIT:
+                        # Over-limit unterminated string: same as above -
+                        # stream verbatim, keep the body inert, track the
+                        # terminator, do not grow a rescan buffer.
+                        out += data[i:]
+                        self.in_str = True
                         break
                     self.pending = data[i:]
                     break
@@ -506,7 +639,7 @@ def main():
     sel.register(0, selectors.EVENT_READ)
     sel.register(master, selectors.EVENT_READ)
 
-    buf = b""
+    osc52 = Osc52Filter()
     guard = AltScreenGuard()
     pending_echo = b""
     status = 0
@@ -536,17 +669,16 @@ def main():
             if not data:
                 done = True
                 break
-            buf += data
             # Drop our own clipboard-query response if the PTY echoed it,
             # in raw form or in the ECHOCTL-mapped form the line discipline
             # produces (control chars echo as '^X').
             if pending_echo:
                 for pe in (pending_echo, echo_ctl_form(pending_echo)):
-                    if buf.startswith(pe):
-                        buf = buf[len(pe):]
+                    if data.startswith(pe):
+                        data = data[len(pe):]
                         break
                 pending_echo = b""
-            out, buf, events = filter_osc52(buf)
+            out, events = osc52.feed(data)
             out = guard.feed(out)
             if out:
                 os.write(1, out)
@@ -576,17 +708,21 @@ def main():
         p, st = os.waitpid(pid, os.WNOHANG)
         if p:
             sel.unregister(master)
+            out = bytearray()
+            events = []
             try:
                 while True:
                     data = os.read(master, 65536)
                     if not data:
                         break
-                    buf += data
+                    o, ev = osc52.feed(data)
+                    out += o
+                    events.extend(ev)
             except OSError:
                 pass
             # Drain through the filter so a trailing OSC 52 still applies.
-            out, buf, events = filter_osc52(buf + b"\0")
-            out = guard.feed(out, flush=True)
+            out += osc52.flush()
+            out = guard.feed(bytes(out), flush=True)
             if out:
                 os.write(1, out)
             for params, payload in events:
@@ -608,8 +744,9 @@ def main():
             os.unlink(state_path)
         except OSError:
             pass
-    if buf:
-        os.write(1, guard.feed(buf, flush=True))
+    tail = osc52.flush() + guard.feed(b"", flush=True)
+    if tail:
+        os.write(1, tail)
     sys.exit(status)
 
 

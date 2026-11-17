@@ -120,4 +120,50 @@ assert mid == b"data", mid
 assert tail == b"\x1b[?10", tail
 print("ok   flush releases partial verbatim")
 
+# 14. Reviewer-flagged DoS shape: an unterminated CSI streamed at read
+# size must not grow the hold or stall release: bounded pending, all
+# bytes out, each chunk consumed in one pass.
+g = mod.AltScreenGuard()
+emitted = bytearray()
+for _ in range(40):
+    emitted += g.feed(b"\x1b[" + b"1" * 1000)
+emitted += g.feed(b"", flush=True)
+assert len(g.pending) <= g.CSI_LIMIT, len(g.pending)
+assert bytes(emitted) == (b"\x1b[" + b"1" * 1000) * 40
+print("ok   unterminated csi stream bounded and verbatim")
+
+# 15. Unterminated string body: streams past the cap verbatim while its
+# terminator is still tracked; body bytes stay inert (the 1049l inside
+# the DCS body is not structure), and the real unpaired leave after the
+# ST is still dropped.
+g = mod.AltScreenGuard()
+g.STRING_LIMIT = 100  # force streaming quickly
+parts = [b"\x1bP" + b"x" * 500, b"\x1b[?1049l", b"\x1b\\after\x1b[?1049l"]
+out = b"".join(g.feed(p) for p in parts) + g.feed(b"", flush=True)
+want = b"\x1bP" + b"x" * 500 + b"\x1b[?1049l" + b"\x1b\\after"
+assert out == want, out
+assert len(g.pending) <= g.STRING_LIMIT
+print("ok   unterminated string stream bounded, body inert")
+
+# 16. Streaming string body split exactly at an ST introducer: the
+# trailing ESC is held (one byte) and resolved on the next read.
+g = mod.AltScreenGuard()
+g.STRING_LIMIT = 10
+out = b"".join(
+    [g.feed(b"\x1bP" + b"y" * 50), g.feed(b"\x1b"), g.feed(b"\\tail"), g.feed(b"", flush=True)]
+)
+assert out == b"\x1bP" + b"y" * 50 + b"\x1b\\tail", out
+print("ok   streaming st split across reads")
+
+# 17. An oversized CSI that later receives its final byte streams
+# through verbatim and ends exactly at the final byte: the next
+# sequence is parsed fresh (a real unpaired leave after it drops).
+g = mod.AltScreenGuard()
+g.CSI_LIMIT = 20
+out = b"".join(
+    g.feed(p) for p in (b"\x1b[" + b"1" * 100, b"9m\x1b[?1049l")
+) + g.feed(b"", flush=True)
+assert out == b"\x1b[" + b"1" * 100 + b"9m", out
+print("ok   oversized csi ends at final byte")
+
 sys.exit(1 if failures else 0)
