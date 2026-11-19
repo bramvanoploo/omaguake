@@ -9,8 +9,9 @@ memory while every byte is released correctly and alt-screen decisions
 still hold.
 
 The pane command writes to its PTY stdout and exits by itself, so the
-relay drains, flushes and exits normally. (A `cat`-style pane would keep
-the session alive; unrelated to this check.)
+relay drains, flushes and exits normally. Exit is also verified bounded
+when a descendant keeps the PTY slave open (silent or chatty): the
+post-shell-exit drain must neither hang nor buffer the stream.
 
 Requires Linux (the relay uses a PTY). Run:  python3 tests/test_relay_dos.py
 Exits non-zero on any failure.
@@ -22,6 +23,12 @@ import subprocess
 import sys
 import tempfile
 import time
+
+# Wall-clock cap for "shell exited but a descendant still holds the PTY
+# slave" runs: the relay notices shell exit within its 1s poll interval
+# and drains for at most EXIT_DRAIN_TIMEOUT (2s); anything past ~3.5s is
+# the pre-fix blocking-until-EOF behavior.
+EXIT_MAX_SECONDS = 3.5
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RELAY = os.path.join(HERE, "..", "scripts", "osc52-relay.py")
@@ -53,6 +60,34 @@ def run(name, cmd, expect_out, max_kib=MAX_RSS_KIB):
         print("  got :", p.stdout[:120], b"..." if len(p.stdout) > 120 else "")
         print("  want:", expect_out[:120], b"..." if len(expect_out) > 120 else "")
     return ok and rss <= max_kib
+
+
+def run_exit(name, cmd, check_out, max_seconds=EXIT_MAX_SECONDS):
+    """Shell exits while a descendant keeps the PTY slave open: the relay
+    must exit on its own (bounded drain), not block until the descendant
+    finishes. check_out receives the full relay stdout."""
+    before = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss  # KiB
+    t0 = time.monotonic()
+    try:
+        p = subprocess.run(
+            [sys.executable, RELAY, "sh", "-c", cmd],
+            input=b"",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={"OMAGUAKE_CLIP_COPY": "/bin/true", "PATH": "/usr/bin:/bin"},
+            timeout=max_seconds + 10,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"FAIL {name}: relay still running after {max_seconds + 10}s (exit hang)")
+        return False
+    dt = time.monotonic() - t0
+    rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss - before
+    ok = check_out(p.stdout) and dt <= max_seconds and rss <= MAX_RSS_KIB
+    print(
+        f"{'ok  ' if ok else 'FAIL'} {name}: out {len(p.stdout)} B, {dt:.2f}s, "
+        f"child peak-RSS delta {rss} KiB"
+    )
+    return ok
 
 
 def main():
@@ -92,6 +127,41 @@ def main():
             f"{stty} cat {f2}",
             want,
         )
+
+    # Bounded post-shell-exit drain: a descendant that inherited the PTY
+    # slave must not hang the relay past its own exit. The HUP trap +
+    # setsid keeps the descendant alive through the session teardown.
+    quiet_desc = (
+        f"{stty} printf done; trap '' HUP; "
+        "setsid sh -c 'trap \"\" HUP; sleep 6' &"
+    )
+    ok &= run_exit(
+        "silent descendant holding slave: relay exits promptly",
+        quiet_desc,
+        lambda out: out == b"done",
+    )
+
+    # Chatty descendant: chunk interval (0.2s) is below the quiet cap, so
+    # the drain runs to the EXIT_DRAIN_TIMEOUT wall-clock cap instead of
+    # an idle gap, and the relay exits while the descendant still writes.
+    chatty_desc = (
+        f"{stty} printf done; trap '' HUP; "
+        "setsid sh -c 'trap \"\" HUP; i=0; while [ $i -lt 24 ]; do "
+        "dd if=/dev/zero bs=1M count=2 2>/dev/null; sleep 0.2; "
+        "i=$((i+1)); done' &"
+    )
+
+    def check_chatty(out):
+        # Everything the descendant floods after the shell exited is
+        # forwarded incrementally (never buffered to EOF): output starts
+        # with the shell's own bytes and continues with the flood's NULs.
+        return out.startswith(b"done") and set(out[4:]) <= {0}
+
+    ok &= run_exit(
+        "flooding descendant after shell exit: streamed, bounded time",
+        chatty_desc,
+        check_chatty,
+    )
 
     return 0 if ok else 1
 

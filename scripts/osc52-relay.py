@@ -11,6 +11,7 @@ import json
 import os
 import pty
 import re
+import select
 import selectors
 import shlex
 import shutil
@@ -33,6 +34,8 @@ READ_TIMEOUT = 1.0  # 1.0s timeout for paste command execution (time limit)
 COPY_TIMEOUT = 2.0  # 2.0s timeout for copy command execution
 MIN_READ_INTERVAL = 1.0  # Rate limit: minimum seconds between permitted reads (time limit)
 MAX_IDLE_SECONDS = 30.0  # Require user activity within 30s for permitted read
+EXIT_DRAIN_QUIET = 0.25  # Post-shell-exit drain: stop after this long with no PTY output
+EXIT_DRAIN_TIMEOUT = 2.0  # Post-shell-exit drain: hard wall-clock cap (idle or not)
 
 
 def echo_ctl_form(data):
@@ -707,35 +710,49 @@ def main():
                 timeout = 0.25 if time.monotonic() - last_key < 2.0 else 1.0
         p, st = os.waitpid(pid, os.WNOHANG)
         if p:
+            # Shell exited: drain what the PTY still holds so trailing
+            # output (e.g. an OSC 52 copy issued right before exit) still
+            # applies, but BOUNDED. A descendant that inherited the slave
+            # fd (daemonized job, nohup'd process) keeps EOF from ever
+            # arriving, so never block in read() and never buffer the
+            # remainder: forward incrementally through the filters and
+            # stop at EOF, after a quiet gap, or at the deadline. A silent
+            # holder cannot hang the exit; a chatty one cannot grow memory
+            # or hold the session open past the drain cap.
             sel.unregister(master)
-            out = bytearray()
-            events = []
-            try:
-                while True:
+            deadline = time.monotonic() + EXIT_DRAIN_TIMEOUT
+            while True:
+                budget = deadline - time.monotonic()
+                if budget <= 0:
+                    break
+                if not select.select([master], [], [], min(EXIT_DRAIN_QUIET, budget))[0]:
+                    break
+                try:
                     data = os.read(master, 65536)
-                    if not data:
-                        break
-                    o, ev = osc52.feed(data)
-                    out += o
-                    events.extend(ev)
-            except OSError:
-                pass
-            # Drain through the filter so a trailing OSC 52 still applies.
-            out += osc52.flush()
-            out = guard.feed(bytes(out), flush=True)
-            if out:
-                os.write(1, out)
-            for params, payload in events:
-                handle_event(
-                    params,
-                    payload,
-                    master,
-                    copy_cmd,
-                    paste_cmd,
-                    allow_read=allow_read,
-                    last_read_state=read_state,
-                    last_key=last_key,
-                )
+                except OSError:
+                    break
+                if not data:
+                    break
+                o, ev = osc52.feed(data)
+                o = guard.feed(o)
+                if o:
+                    os.write(1, o)
+                for params, payload in ev:
+                    handle_event(
+                        params,
+                        payload,
+                        master,
+                        copy_cmd,
+                        paste_cmd,
+                        allow_read=allow_read,
+                        last_read_state=read_state,
+                        last_key=last_key,
+                    )
+            # Release the filter tails so a trailing OSC 52 head and any
+            # held partial sequence go out verbatim.
+            tail = guard.feed(osc52.flush()) + guard.feed(b"", flush=True)
+            if tail:
+                os.write(1, tail)
             done = True
             status = os.WEXITSTATUS(st) if os.WIFEXITED(st) else 128 + os.WTERMSIG(st)
 
